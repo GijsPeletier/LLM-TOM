@@ -1,0 +1,23 @@
+# ── Core scientific stack ────────────────────────────────────────────────────
+numpy
+scipy
+pandas
+
+# ── LLM API clients (api_agent.py) ───────────────────────────────────────────
+anthropic
+openai
+google-genai
+
+# ── Retry / resilience (api_agent.py) ────────────────────────────────────────
+tenacity
+
+# ── Local HuggingFace models (hf_agent.py) ───────────────────────────────────
+torch
+transformers
+bitsandbytes          # 8-bit quantization via BitsAndBytesConfig
+accelerate            # required by device_map="auto" in from_pretrained
+
+# -- added for interface
+rich
+pynput
+dotmap
