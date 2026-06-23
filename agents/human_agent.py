@@ -11,7 +11,7 @@ from game.history import NegotiationMessage
 from agents.utils import MAX_MESSAGE_LENGTH
 
 COLOURS = ["white", "black", "magenta", "grey", "yellow"]
-MD_COLOURS = ["white", "bright_black", "magenta", "grey50", "yellow"]
+MD_COLOURS = ["white", "grey7", "magenta", "grey50", "yellow"]
 
 
 class Human:
