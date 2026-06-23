@@ -86,9 +86,7 @@ class Human:
                 if len(self.message_buffer) < MAX_MESSAGE_LENGTH:
                     self.message_buffer += " "
                 return
-            for special, ch in (
-                (keyboard.Key.tab, "\t"),
-            ):
+            for special, ch in ((keyboard.Key.tab, "\t"),):
                 if key == special:
                     if len(self.message_buffer) < MAX_MESSAGE_LENGTH:
                         self.message_buffer += ch
@@ -163,7 +161,8 @@ class Human:
 
         table.add_row("All chips", *[str(i) for i in self.game.bin_max])
         table.add_row("Your chips", *[str(i) for i in my_chips])
-        table.add_row("Received offer", *[str(i) for i in self.received_offer])
+        if not self.initial_offer:
+            table.add_row("Received offer", *[str(i) for i in self.received_offer])
         table.add_row(
             "Your offer",
             *[
@@ -191,7 +190,11 @@ class Human:
         return Columns([left_panel, right_group], expand=True)
 
     def _message_phase_renderable(self):
-        body = Text(self.message_buffer + "▌", style="bold") if self.message_buffer else Text("▌", style="bold")
+        body = (
+            Text(self.message_buffer + "▌", style="bold")
+            if self.message_buffer
+            else Text("▌", style="bold")
+        )
         caption = Text(
             f"Type your message to the opponent "
             f"({len(self.message_buffer)}/{MAX_MESSAGE_LENGTH}). "
@@ -209,8 +212,13 @@ class Human:
             return self._message_phase_renderable()
         return self._offer_phase_renderable()
 
-    def make_offer(self, received_offer, round_idx=0, role="initiator", incoming_message=None):
+    def make_offer(
+        self, received_offer, round_idx=0, role="initiator", incoming_message=None
+    ):
+        self.initial_offer = False
         if received_offer is None:
+            print("initial offer")
+            self.initial_offer = True
             received_offer = self.game.chip_sets[self.player_id]
         chip_offer = Game_ct.convert_code(received_offer, self.game.bin_max)
         self.received_offer = chip_offer.copy()
@@ -227,7 +235,12 @@ class Human:
         self._dirty = threading.Event()
         self._dirty.set()
 
-        with Live(self.update_offer_display(), refresh_per_second=10, transient=True, screen=False) as live:
+        with Live(
+            self.update_offer_display(),
+            refresh_per_second=10,
+            transient=True,
+            screen=False,
+        ) as live:
             listener = keyboard.Listener(on_press=self.key_listener, suppress=True)
             listener.start()
             try:
