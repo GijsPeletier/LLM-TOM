@@ -151,7 +151,8 @@ def _evaluate_shadows(
 
 
 def run_single_game(
-    game, agent_init, agent_resp, history=None, shadow_agents=None, tracked_player=None
+    game, agent_init, agent_resp, history=None, shadow_agents=None,
+    tracked_player=None, chat_history=True,
 ):
     """Executes a single game of Colored Trails between two agents.
 
@@ -160,6 +161,10 @@ def run_single_game(
     `(delta_0, delta_1, game_evs, history)` where `delta_*` are the per-player
     utility changes. If the game errors (invalid LLM response), `None` is returned
     after stamping an "error" outcome into the supplied history.
+
+    When `chat_history` is True (default), each agent receives the full chat log
+    of all messages exchanged so far. When False, each agent only receives the
+    opponent's most recent message (legacy single-message mode).
     """
     shadow_agents = shadow_agents or {}
     u_init = [
@@ -191,6 +196,7 @@ def run_single_game(
 
     current_player, incoming_offer = 0, None
     incoming_message: str | None = None
+    outgoing_by_player: list[list[dict]] = [[], []]
     agreement_reached, final_chips = False, list(game.chip_sets)
     rounds_played = 0
 
@@ -200,12 +206,24 @@ def run_single_game(
         print(f"\n[Round {rounds}] P{current_player} ({role}):")
 
         active_agent = agent_init if current_player == 0 else agent_resp
+        opp_id = 1 - current_player
+        if chat_history:
+            chat_log_for_active = [
+                {**entry, "speaker": "opponent"}
+                for entry in outgoing_by_player[opp_id]
+            ]
+            incoming_for_active = None
+        else:
+            chat_log_for_active = None
+            incoming_for_active = incoming_message
+
         try:
             offer, message = active_agent.make_offer(
                 incoming_offer,
                 round_idx=rounds,
                 role=role,
-                incoming_message=incoming_message,
+                incoming_message=incoming_for_active,
+                chat_log=chat_log_for_active,
             )
         except ValueError as e:
             print(f"  -> INVALID: {e}")
@@ -219,6 +237,13 @@ def run_single_game(
 
         if history is not None:
             history.messages.append(message)
+
+        if message.message:
+            outgoing_by_player[current_player].append({
+                "round": rounds,
+                "speaker": "you",
+                "text": message.message,
+            })
 
         incoming_message = message.message
 
@@ -326,6 +351,14 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning-speed", type=float, default=0.8)
     parser.add_argument("--debug", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--full-chat-history",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="If enabled (default), LLM/Human agents see the full chat log of "
+        "all messages exchanged so far. If disabled, they only see the "
+        "opponent's most recent message (legacy single-message mode).",
+    )
     args = parser.parse_args()
 
     # --- Directory Setup ---
@@ -399,6 +432,7 @@ def main():
             result_c1 = run_single_game(
                 game, p0_c1, p1_c1, history=history_c1,
                 shadow_agents=shadows_c1, tracked_player=0,
+                chat_history=args.full_chat_history,
             )
             path_c1 = os.path.join(dir_games, f"board_{i + 1}_c1.json")
             if os.path.exists(path_c1):
@@ -424,6 +458,7 @@ def main():
             result_c2 = run_single_game(
                 game, p0_c2, p1_c2, history=history_c2,
                 shadow_agents=shadows_c2, tracked_player=1,
+                chat_history=args.full_chat_history,
             )
             path_c2 = os.path.join(dir_games, f"board_{i + 1}_c2.json")
             if os.path.exists(path_c2):

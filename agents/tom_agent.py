@@ -553,7 +553,7 @@ class Agent_ct:
 
         return selected
 
-    def make_offer(self, offer_to_me=None, round_idx=0, role="initiator", incoming_message=None):
+    def make_offer(self, offer_to_me=None, round_idx=0, role="initiator", incoming_message=None, chat_log=None):
         """
         Main method to generate a move.
 
@@ -562,6 +562,7 @@ class Agent_ct:
             round_idx: Current round number (for NegotiationMessage bookkeeping).
             role: "initiator" or "responder" (for NegotiationMessage bookkeeping).
             incoming_message: Free-text message from the opponent (ignored by ToM agents).
+            chat_log: Full chat history (ignored by ToM agents).
 
         Returns:
             tuple[int, NegotiationMessage]: (encoded offer code, structured message)

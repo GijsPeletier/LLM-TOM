@@ -9,6 +9,8 @@ from game.colored_trails import Game_ct
 
 MAX_MESSAGE_LENGTH = 200
 
+CHAT_HISTORY_MAX_MESSAGES = 50
+
 def format_board(board, goal_r, goal_c):
     """Formats the board with row/col indices and color names."""
     color_map = {0: "White", 1: "Black", 2: "Magenta", 3: "Gray", 4: "Yellow"}
@@ -74,8 +76,50 @@ def extract_thoughts(raw_response: str) -> str | None:
         return raw_response[: match.start()].strip() or None
     return raw_response.strip() or None
 
-def construct_prompt(player_id, game, history, offer_received, incoming_message=None):
-    """Constructs the prompt sent to the LLM based on the current game state."""
+def _format_chat_history_block(chat_log, fallback_incoming_message=None):
+    """Render the chat-history block for the LLM prompt.
+
+    `chat_log` is a list of `{"round": int, "speaker": "you"|"opponent", "text": str|None}`
+    entries in chronological order. Capped to the most recent
+    `CHAT_HISTORY_MAX_MESSAGES` entries.
+
+    Falls back to a single-message block (legacy behavior) when `chat_log` is
+    empty/None and `fallback_incoming_message` is provided.
+    """
+    if chat_log:
+        trimmed = chat_log[-CHAT_HISTORY_MAX_MESSAGES:]
+        lines = []
+        any_text = False
+        for entry in trimmed:
+            text = (entry.get("text") or "").strip()
+            if text:
+                any_text = True
+                lines.append(f"- [R{entry['round']}, {entry['speaker']}] \"{text}\"")
+            else:
+                lines.append(f"- [R{entry['round']}, {entry['speaker']}] (no message)")
+        if not any_text:
+            return ""
+        return "CHAT HISTORY WITH OPPONENT:\n" + "\n".join(lines) + "\n"
+
+    if fallback_incoming_message is not None and str(fallback_incoming_message).strip():
+        return (
+            f"PREVIOUS MESSAGE FROM OPPONENT:\n"
+            f"\"{str(fallback_incoming_message).strip()}\"\n"
+        )
+    return ""
+
+
+def construct_prompt(
+    player_id, game, history, offer_received,
+    incoming_message=None, chat_log=None,
+):
+    """Constructs the prompt sent to the LLM based on the current game state.
+
+    `chat_log` (preferred) is a list of `{"round", "speaker", "text"}` dicts in
+    chronological order representing every free-text message exchanged so far
+    in the negotiation (both directions). When provided, it supersedes the
+    legacy single-message `incoming_message`.
+    """
     my_goal_idx = game.locations[player_id]
     goal_r, goal_c = [
         (0, 0), (0, 1), (0, 3), (0, 4), (1, 0), (1, 4),
@@ -94,13 +138,7 @@ def construct_prompt(player_id, game, history, offer_received, incoming_message=
     else:
         history_str = "\n".join([f"- {entry}" for entry in history])
 
-    if incoming_message is not None and str(incoming_message).strip():
-        message_block = (
-            f"PREVIOUS MESSAGE FROM OPPONENT:\n"
-            f"\"{str(incoming_message).strip()}\"\n"
-        )
-    else:
-        message_block = ""
+    message_block = _format_chat_history_block(chat_log, incoming_message)
 
     if offer_received is None:
         status_line = "It is your turn to start the negotiation."

@@ -8,7 +8,7 @@ from rich.table import Table
 from pynput import keyboard
 from game.colored_trails import Game_ct
 from game.history import NegotiationMessage
-from agents.utils import MAX_MESSAGE_LENGTH
+from agents.utils import MAX_MESSAGE_LENGTH, CHAT_HISTORY_MAX_MESSAGES
 
 COLOURS = ["white", "black", "magenta", "grey", "yellow"]
 MD_COLOURS = ["white", "grey7", "magenta", "grey50", "yellow"]
@@ -23,6 +23,7 @@ class Human:
         self.offer_done = False
         self.incoming_message: str | None = None
         self.outgoing_message: str = ""
+        self.chat_log: list[dict] = []
         self.phase: str = "offer"
         self.message_buffer: str = ""
         self.ctrl_c_pending: bool = False
@@ -32,6 +33,7 @@ class Human:
         self.game = game
         self.incoming_message = None
         self.outgoing_message = ""
+        self.chat_log = []
         self.phase = "offer"
         self.message_buffer = ""
         self.ctrl_c_pending = False
@@ -173,15 +175,34 @@ class Human:
         return table
 
     def _incoming_message_panel(self):
-        if self.incoming_message:
-            msg_text = Text(self.incoming_message, style="italic")
+        if not self.chat_log:
+            msg_text = Text("(no messages yet)", style="dim italic")
+            return Panel(msg_text, title="Chat history", expand=True)
+
+        trimmed = self.chat_log[-CHAT_HISTORY_MAX_MESSAGES:]
+        body = Text()
+        any_text = False
+        for entry in trimmed:
+            text = (entry.get("text") or "").strip()
+            speaker = entry.get("speaker", "?")
+            round_no = entry.get("round", "?")
+            tag = f"[R{round_no}, {speaker}]"
+            if text:
+                any_text = True
+                body.append(f"{tag}: ", style="bold")
+                body.append(f'"{text}"', style="italic")
+                body.append("\n")
+            else:
+                body.append(f"{tag}: (no message)\n", style="dim")
+        if not any_text:
+            msg_text = Text("(no messages with text yet)", style="dim italic")
         else:
-            msg_text = Text("(no message from opponent)", style="dim italic")
-        return Panel(msg_text, title="Opponent's last message", expand=True)
+            msg_text = body
+        return Panel(msg_text, title="Chat history", expand=True)
 
     def _offer_phase_renderable(self):
         left_panel = Panel(
-            Text().from_markup(self.board_str()), title="Board", expand=True
+            Text().from_markup(self.board_str()), title="Board", expand=False
         )
         right_group = Group(
             self._offer_table_panel(),
@@ -213,7 +234,12 @@ class Human:
         return self._offer_phase_renderable()
 
     def make_offer(
-        self, received_offer, round_idx=0, role="initiator", incoming_message=None
+        self,
+        received_offer,
+        round_idx=0,
+        role="initiator",
+        incoming_message=None,
+        chat_log=None,
     ):
         self.initial_offer = False
         if received_offer is None:
@@ -224,8 +250,21 @@ class Human:
         self.received_offer = chip_offer.copy()
         self.offer = chip_offer
         self.offer_index = 0
+        if chat_log is not None:
+            self.chat_log = list(chat_log)
+        else:
+            if incoming_message is not None and str(incoming_message).strip():
+                self.chat_log.append(
+                    {
+                        "round": round_idx,
+                        "speaker": "opponent",
+                        "text": str(incoming_message).strip(),
+                    }
+                )
         self.incoming_message = (
-            str(incoming_message).strip() if incoming_message is not None else None
+            self.chat_log[-1]["text"]
+            if self.chat_log and self.chat_log[-1].get("text")
+            else None
         )
         self.outgoing_message = ""
         self.message_buffer = ""
@@ -258,6 +297,16 @@ class Human:
 
         offer_code = Game_ct.convert_chips(self.offer, self.game.bin_max)
         chat_message = self.outgoing_message.strip() or None
+        if chat_message:
+            self.chat_log.append(
+                {
+                    "round": round_idx,
+                    "speaker": "you",
+                    "text": chat_message,
+                }
+            )
+            if len(self.chat_log) > CHAT_HISTORY_MAX_MESSAGES:
+                self.chat_log = self.chat_log[-CHAT_HISTORY_MAX_MESSAGES:]
         message = NegotiationMessage(
             round=round_idx,
             player_id=self.player_id,

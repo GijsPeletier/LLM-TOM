@@ -1,6 +1,9 @@
 from game.colored_trails import Game_ct
 from game.history import NegotiationMessage
-from agents.utils import format_chips, parse_response, construct_prompt, extract_thoughts, MAX_MESSAGE_LENGTH
+from agents.utils import (
+    format_chips, parse_response, construct_prompt, extract_thoughts,
+    MAX_MESSAGE_LENGTH, CHAT_HISTORY_MAX_MESSAGES,
+)
 
 
 class BaseLLMAgent:
@@ -11,18 +14,33 @@ class BaseLLMAgent:
         self.order = "LLM"
         self.confidence = 1.0
         self.last_opponent_message = None
+        self.chat_log: list[dict] = []
 
     def init(self, game):
         self.game = game
         self.history = []
         self.last_opponent_message = None
+        self.chat_log = []
 
-    def make_offer(self, offer_received=None, round_idx=0, role="initiator", incoming_message=None):
+    def make_offer(
+        self, offer_received=None, round_idx=0, role="initiator",
+        incoming_message=None, chat_log=None,
+    ):
         if self.game is None:
             raise ValueError("Agent not initialized with a game instance.")
 
         if incoming_message is not None and str(incoming_message).strip():
             self.last_opponent_message = str(incoming_message).strip()
+
+        if chat_log is not None:
+            self.chat_log = list(chat_log)
+        else:
+            if self.last_opponent_message is not None:
+                self.chat_log.append({
+                    "round": round_idx,
+                    "speaker": "opponent",
+                    "text": self.last_opponent_message,
+                })
 
         if offer_received is not None:
             opp_offer_str = format_chips(Game_ct.convert_code(offer_received, self.game.bin_max))
@@ -33,6 +51,7 @@ class BaseLLMAgent:
         prompt = construct_prompt(
             self.player_id, self.game, self.history, offer_received,
             incoming_message=self.last_opponent_message,
+            chat_log=self.chat_log,
         )
 
         # This calls the method defined in the child classes (API or HF)
@@ -77,6 +96,15 @@ class BaseLLMAgent:
             offer_list = Game_ct.convert_code(offer_code, self.game.bin_max)
         else:
             raise ValueError(f"P{self.player_id}: Unknown action '{action}'.")
+
+        if chat_message:
+            self.chat_log.append({
+                "round": round_idx,
+                "speaker": "you",
+                "text": chat_message,
+            })
+        if len(self.chat_log) > CHAT_HISTORY_MAX_MESSAGES:
+            self.chat_log = self.chat_log[-CHAT_HISTORY_MAX_MESSAGES:]
 
         message = NegotiationMessage(
             round=round_idx,
