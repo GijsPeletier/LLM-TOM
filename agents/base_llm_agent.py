@@ -7,7 +7,7 @@ from agents.utils import (
 
 
 class BaseLLMAgent:
-    def __init__(self, player_id):
+    def __init__(self, player_id, debug=False):
         self.player_id = player_id
         self.game = None
         self.history = []
@@ -15,6 +15,7 @@ class BaseLLMAgent:
         self.confidence = 1.0
         self.last_opponent_message = None
         self.chat_log: list[dict] = []
+        self.debug = debug
 
     def init(self, game):
         self.game = game
@@ -57,8 +58,9 @@ class BaseLLMAgent:
         # This calls the method defined in the child classes (API or HF)
         response_text = self._generate_llm_response(prompt)
 
-        print(f"  [Debug] Prompt: {prompt}")
-        print(f"  [Debug] Raw Response: {response_text}")
+        if self.debug:
+            print(f"  [Debug] Prompt: {prompt}")
+            print(f"  [Debug] Raw Response: {response_text}")
 
         response_data = parse_response(response_text)
 
@@ -74,9 +76,10 @@ class BaseLLMAgent:
             if chat_message == "":
                 chat_message = None
 
-        print(f"  [Debug] Parsed Response: Action: {action}, Reason: {reasoning if reasoning else 'N/A'}")
-        if chat_message:
-            print(f"  [Debug] Message: {chat_message}")
+        if self.debug:
+            print(f"  [Debug] Parsed Response: Action: {action}, Reason: {reasoning if reasoning else 'N/A'}")
+            if chat_message:
+                print(f"  [Debug] Message: {chat_message}")
 
         if action == 'accept':
             if offer_received is None:

@@ -14,7 +14,10 @@ import argparse
 import json
 import os
 
+from rich.console import Console
+
 from agents.human_agent import Human
+from agents.utils import format_chips
 from game.colored_trails import Game_ct
 from game.history import GameHistory
 from agents.tom_agent import Agent_ct
@@ -88,7 +91,7 @@ def save_checkpoint(filepath, ckpt_data, agents_tuple, shadows_tuple):
 # AGENT SETUP & GAME LOGIC
 
 
-def create_agent(agent_type, player_id, learning_speed=0.8, debug=True):
+def create_agent(agent_type, player_id, learning_speed=0.8, debug=False):
     """Factory pattern for instantiating game agents cleanly."""
     agent_type = agent_type.lower()
 
@@ -103,24 +106,44 @@ def create_agent(agent_type, player_id, learning_speed=0.8, debug=True):
     match agent_type:
         case "claude":
             return APIAgent(
-                player_id, provider="anthropic", model_name="claude-sonnet-4-6"
+                player_id,
+                provider="anthropic",
+                model_name="claude-sonnet-4-6",
+                debug=debug,
             )
         case "gemini":
-            return APIAgent(player_id, provider="google", model_name="gemini-2.5-pro")
+            return APIAgent(
+                player_id,
+                provider="google",
+                model_name="gemini-2.5-pro",
+                debug=debug,
+            )
         case "qwen":
-            return HFAgent(player_id, model_path="Qwen/Qwen2.5-72B-Instruct")
+            return HFAgent(
+                player_id,
+                model_path="Qwen/Qwen2.5-72B-Instruct",
+                debug=debug,
+            )
         case "llama":
-            return HFAgent(player_id, model_path="meta-llama/Meta-Llama-3-8B-Instruct")
+            return HFAgent(
+                player_id,
+                model_path="meta-llama/Meta-Llama-3-8B-Instruct",
+                debug=debug,
+            )
         case "gpt-oss":
-            return HFAgent(player_id, model_path="openai/gpt-oss-120b")
+            return HFAgent(
+                player_id,
+                model_path="openai/gpt-oss-120b",
+                debug=debug,
+            )
         case "human":
-            return Human(player_id)
+            return Human(player_id, debug=debug)
         case _:
             print(
                 f"[{player_id}] Unknown agent type '{agent_type}'. "
                 f"Defaulting to Human. (Results will be stored under this name.)"
             )
-            return Human(player_id)
+            return Human(player_id, debug=debug)
 
 
 def _evaluate_shadows(
@@ -151,8 +174,13 @@ def _evaluate_shadows(
 
 
 def run_single_game(
-    game, agent_init, agent_resp, history=None, shadow_agents=None,
-    tracked_player=None, chat_history=True,
+    game,
+    agent_init,
+    agent_resp,
+    history=None,
+    shadow_agents=None,
+    tracked_player=None,
+    chat_history=True,
 ):
     """Executes a single game of Colored Trails between two agents.
 
@@ -178,9 +206,7 @@ def run_single_game(
 
     game_evs = {name: [] for name in shadow_agents}
 
-    hide_opponent_goal = (
-        isinstance(agent_init, Human) or isinstance(agent_resp, Human)
-    )
+    hide_opponent_goal = isinstance(agent_init, Human) or isinstance(agent_resp, Human)
 
     for row in game.board:
         print(str(row))
@@ -209,8 +235,7 @@ def run_single_game(
         opp_id = 1 - current_player
         if chat_history:
             chat_log_for_active = [
-                {**entry, "speaker": "opponent"}
-                for entry in outgoing_by_player[opp_id]
+                {**entry, "speaker": "opponent"} for entry in outgoing_by_player[opp_id]
             ]
             incoming_for_active = None
         else:
@@ -228,22 +253,26 @@ def run_single_game(
         except ValueError as e:
             print(f"  -> INVALID: {e}")
             if history is not None:
-                history.outcome = DotMap({
-                    "result": "error",
-                    "rounds": rounds,
-                    "error": str(e),
-                })
+                history.outcome = DotMap(
+                    {
+                        "result": "error",
+                        "rounds": rounds,
+                        "error": str(e),
+                    }
+                )
             return None
 
         if history is not None:
             history.messages.append(message)
 
         if message.message:
-            outgoing_by_player[current_player].append({
-                "round": rounds,
-                "speaker": "you",
-                "text": message.message,
-            })
+            outgoing_by_player[current_player].append(
+                {
+                    "round": rounds,
+                    "speaker": "you",
+                    "text": message.message,
+                }
+            )
 
         incoming_message = message.message
 
@@ -285,20 +314,182 @@ def run_single_game(
         else:
             result = "max_rounds"
         history.rounds = rounds_played + 1
-        history.outcome = DotMap({
-            "result": result,
-            "rounds": rounds_played + 1,
-            "agreement": agreement_reached,
-            "cost": cost,
-            "final_chips": [
-                Game_ct.convert_code(final_chips[0], game.bin_max),
-                Game_ct.convert_code(final_chips[1], game.bin_max),
-            ],
-            "final_utilities": [s_end[0], s_end[1]],
-            "deltas": [s_end[0] - u_init[0], s_end[1] - u_init[1]],
-        })
+        history.outcome = DotMap(
+            {
+                "result": result,
+                "rounds": rounds_played + 1,
+                "agreement": agreement_reached,
+                "cost": cost,
+                "final_chips": [
+                    Game_ct.convert_code(final_chips[0], game.bin_max),
+                    Game_ct.convert_code(final_chips[1], game.bin_max),
+                ],
+                "final_utilities": [s_end[0], s_end[1]],
+                "deltas": [s_end[0] - u_init[0], s_end[1] - u_init[1]],
+            }
+        )
 
     return (s_end[0] - u_init[0]), (s_end[1] - u_init[1]), game_evs, history
+
+
+def run_single_human_game(
+    game,
+    agent_init,
+    agent_resp,
+    history=None,
+    chat_history=True,
+):
+    """Lean-stdout variant of `run_single_game` for matches involving a Human.
+
+    The board rows are suppressed (the human sees the board in the rich Live
+    UI); the per-round `[Round N] / -> Offers / -> ACCEPTED / -> WITHDREW`
+    prints are replaced by a single `rich`-formatted line per move:
+
+        P0 proposes  White:1, Black:0, Magenta:1, Gray:1, Yellow:0 — "msg"
+        P1 accepts
+        P1 withdraws
+
+    Starting-info lines, `Game Ended | …`, and `Final Utilities: …` are kept.
+    Returns the same 4-tuple as `run_single_game`. If the game errors,
+    `None` is returned after stamping an "error" outcome into `history`.
+    """
+    console = Console()
+    u_init = [
+        game.utility_function[game.locations[i]][game.chip_sets[i]] for i in (0, 1)
+    ]
+
+    for a in (agent_init, agent_resp):
+        a.init(game)
+
+    for i, role in enumerate(["Initiator", "Responder"]):
+        if i == 1:
+            print(
+                f"P{i} ({role}): Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
+            )
+        else:
+            print(
+                f"P{i} ({role}): Goal {game.locations[i]}, Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
+            )
+
+    header = " " * 12 + "   ".join(
+        f"{c:>7}" for c in ["White", "Black", "Magenta", "Gray", "Yellow"]
+    )
+    print(header)
+
+    current_player, incoming_offer = 0, None
+    incoming_message: str | None = None
+    outgoing_by_player: list[list[dict]] = [[], []]
+    agreement_reached, final_chips = False, list(game.chip_sets)
+    rounds_played = 0
+
+    for rounds in range(100):
+        rounds_played = rounds
+        role = "initiating" if rounds == 0 else "responding"
+
+        active_agent = agent_init if current_player == 0 else agent_resp
+        opp_id = 1 - current_player
+        if chat_history:
+            chat_log_for_active = [
+                {**entry, "speaker": "opponent"} for entry in outgoing_by_player[opp_id]
+            ]
+            incoming_for_active = None
+        else:
+            chat_log_for_active = None
+            incoming_for_active = incoming_message
+
+        try:
+            offer, message = active_agent.make_offer(
+                incoming_offer,
+                round_idx=rounds,
+                role=role,
+                incoming_message=incoming_for_active,
+                chat_log=chat_log_for_active,
+            )
+        except ValueError as e:
+            print(f"  -> INVALID: {e}")
+            if history is not None:
+                history.outcome = DotMap(
+                    {
+                        "result": "error",
+                        "rounds": rounds,
+                        "error": str(e),
+                    }
+                )
+            return None
+
+        if history is not None:
+            history.messages.append(message)
+
+        if message.message:
+            outgoing_by_player[current_player].append(
+                {
+                    "round": rounds,
+                    "speaker": "you",
+                    "text": message.message,
+                }
+            )
+
+        incoming_message = message.message
+
+        offer_vec = Game_ct.convert_code(offer, game.bin_max)
+        chat = message.message
+        if message.action == "withdraw":
+            console.print(f"[bold]P{current_player}[/bold] [red]withdraws[/red]")
+        elif message.action == "accept":
+            console.print(f"[bold]P{current_player}[/bold] [green]accepts[/green]")
+        else:
+            nums = "   ".join(f"{n:>7}" for n in offer_vec)
+            suffix = f'  — "{chat}"' if chat else ""
+            console.print(
+                f"[bold]P{current_player}[/bold] [cyan]proposes[/cyan] {nums}{suffix}"
+            )
+
+        if offer == game.chip_sets[current_player]:
+            break
+
+        if rounds > 0 and offer == incoming_offer:
+            agreement_reached = True
+            final_chips[current_player] = offer
+            final_chips[1 - current_player] = game.flip_array[offer]
+            break
+
+        incoming_offer = game.flip_array[offer]
+        current_player = 1 - current_player
+
+    cost = (rounds_played + 1) * 1
+    s_end = [
+        game.utility_function[game.locations[i]][final_chips[i]] - cost for i in (0, 1)
+    ]
+
+    print(
+        f"\nGame Ended | Rounds: {rounds_played + 1} | Cost: {cost} | Agreement: {agreement_reached}"
+    )
+    print(f"Final Utilities: P0={s_end[0]:.1f}, P1={s_end[1]:.1f}")
+
+    if history is not None:
+        if agreement_reached:
+            result = "accepted"
+        elif offer == game.chip_sets[0] or offer == game.chip_sets[1]:
+            result = "withdrawn"
+        else:
+            result = "max_rounds"
+        history.rounds = rounds_played + 1
+        history.outcome = DotMap(
+            {
+                "result": result,
+                "rounds": rounds_played + 1,
+                "agreement": agreement_reached,
+                "cost": cost,
+                "final_chips": [
+                    Game_ct.convert_code(final_chips[0], game.bin_max),
+                    Game_ct.convert_code(final_chips[1], game.bin_max),
+                ],
+                "final_utilities": [s_end[0], s_end[1]],
+                "deltas": [s_end[0] - u_init[0], s_end[1] - u_init[1]],
+            }
+        )
+
+    return (s_end[0] - u_init[0]), (s_end[1] - u_init[1]), {}, history
 
 
 def _record_game_stats(
@@ -350,7 +541,7 @@ def main():
     parser.add_argument("--num-games", type=int, default=100)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning-speed", type=float, default=0.8)
-    parser.add_argument("--debug", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument("--debug", action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument(
         "--full-chat-history",
         action=argparse.BooleanOptionalAction,
@@ -379,11 +570,13 @@ def main():
 
     p0_c2 = create_agent(args.player_1, 0, args.learning_speed, args.debug)
     p1_c2 = create_agent(args.player_0, 1, args.learning_speed, args.debug)
-    # shadows_c2 = {f"tom{i}": ShadowAgent(i, 1) for i in range(3)} | {"random": RandomShadowAgent(1)}
+    # shadows_c2 = {f"tom{i}": ShadowAgent(i, 0) for i in range(3)} | {"random": RandomShadowAgent(0)}
     shadows_c2 = {}  # Run without shadow agent tracking
 
     agents_tuple = (p0_c1, p1_c1, p0_c2, p1_c2)
     shadows_tuple = (shadows_c1, shadows_c2)
+
+    human_in_matchup = isinstance(p0_c1, Human) or isinstance(p1_c1, Human)
 
     # Tournament State Variables
     game = Game_ct()
@@ -412,96 +605,216 @@ def main():
             skipped_boards = ckpt.get("skipped_boards", 0)
             start_index = ckpt["board_idx"] + 1
 
-        # Tournament Loop
-        for i, b in enumerate(boards_data[start_index:], start=start_index):
-            # Config 1
-            print(
-                f"\n========== Board {i + 1}/{len(boards_data)} | Config 1: {args.player_0} vs {args.player_1} =========="
-            )
-            game.load_setting(
-                b["board"], b["chips1"], b["chips2"], b["location1"], b["location2"]
-            )
-            history_c1 = GameHistory.from_game(
-                game,
-                p0_type=args.player_0,
-                p1_type=args.player_1,
-                initiator=0,
-                board_index=i + 1,
-                config="config1",
-            )
-            result_c1 = run_single_game(
-                game, p0_c1, p1_c1, history=history_c1,
-                shadow_agents=shadows_c1, tracked_player=0,
-                chat_history=args.full_chat_history,
-            )
-            path_c1 = os.path.join(dir_games, f"board_{i + 1}_c1.json")
-            if os.path.exists(path_c1):
-                print(f"  -> Skipping save (already exists): {path_c1}")
-            else:
-                history_c1.save(path_c1)
+        if human_in_matchup:
+            if len(boards_data) % 2 == 1:
+                print(
+                    f"  -> Human tournament has an odd number of boards "
+                    f"({len(boards_data)}); ignoring the last one."
+                )
+            paired = []
+            for k in range(0, len(boards_data) - 1, 2):
+                paired.append((k, boards_data[k], boards_data[k + 1]))
 
-            # Config 2
-            print(
-                f"\n========== Board {i + 1}/{len(boards_data)} | Config 2: {args.player_1} vs {args.player_0} =========="
-            )
-            game.load_setting(
-                b["board"], b["chips1"], b["chips2"], b["location1"], b["location2"]
-            )
-            history_c2 = GameHistory.from_game(
-                game,
-                p0_type=args.player_1,
-                p1_type=args.player_0,
-                initiator=1,
-                board_index=i + 1,
-                config="config2",
-            )
-            result_c2 = run_single_game(
-                game, p0_c2, p1_c2, history=history_c2,
-                shadow_agents=shadows_c2, tracked_player=1,
-                chat_history=args.full_chat_history,
-            )
-            path_c2 = os.path.join(dir_games, f"board_{i + 1}_c2.json")
-            if os.path.exists(path_c2):
-                print(f"  -> Skipping save (already exists): {path_c2}")
-            else:
-                history_c2.save(path_c2)
+            for i, b1, b2 in paired:
+                if i < start_index:
+                    continue
 
-            # Skip & Record Tracking
-            if result_c1 is None or result_c2 is None:
-                skipped_boards += 1
-                print(f"  -> Board {i + 1} excluded from results.")
-                continue
+                # Config 1 on b1
+                print(
+                    f"\n========== Board {i + 1}/{len(paired) * 2} | Config 1: {args.player_0} vs {args.player_1} =========="
+                )
+                game.load_setting(
+                    b1["board"],
+                    b1["chips1"],
+                    b1["chips2"],
+                    b1["location1"],
+                    b1["location2"],
+                )
+                history_c1 = GameHistory.from_game(
+                    game,
+                    p0_type=args.player_0,
+                    p1_type=args.player_1,
+                    initiator=0,
+                    board_index=i + 1,
+                    config="config1",
+                )
+                result_c1 = run_single_human_game(
+                    game,
+                    p0_c1,
+                    p1_c1,
+                    history=history_c1,
+                    chat_history=args.full_chat_history,
+                )
+                path_c1 = os.path.join(dir_games, f"board_{i + 1}_c1.json")
+                if os.path.exists(path_c1):
+                    print(f"  -> Skipping save (already exists): {path_c1}")
+                else:
+                    history_c1.save(path_c1)
 
-            _record_game_stats(
-                stats,
-                deltas,
-                evidence_matrix,
-                result_c1,
-                args.player_0,
-                args.player_1,
-                "config1",
-                i + 1,
-            )
-            _record_game_stats(
-                stats,
-                deltas,
-                evidence_matrix,
-                result_c2,
-                args.player_0,
-                args.player_1,
-                "config2",
-                i + 1,
-            )
+                # Config 2 on b2 (different board, swapped initiator)
+                print(
+                    f"\n========== Board {i + 2}/{len(paired) * 2} | Config 2: {args.player_1} vs {args.player_0} =========="
+                )
+                game.load_setting(
+                    b2["board"],
+                    b2["chips1"],
+                    b2["chips2"],
+                    b2["location1"],
+                    b2["location2"],
+                )
+                history_c2 = GameHistory.from_game(
+                    game,
+                    p0_type=args.player_1,
+                    p1_type=args.player_0,
+                    initiator=1,
+                    board_index=i + 2,
+                    config="config2",
+                )
+                result_c2 = run_single_human_game(
+                    game,
+                    p0_c2,
+                    p1_c2,
+                    history=history_c2,
+                    chat_history=args.full_chat_history,
+                )
+                path_c2 = os.path.join(dir_games, f"board_{i + 2}_c2.json")
+                if os.path.exists(path_c2):
+                    print(f"  -> Skipping save (already exists): {path_c2}")
+                else:
+                    history_c2.save(path_c2)
 
-            # Save Checkpoint
-            ckpt_data = {
-                "board_idx": i,
-                "skipped_boards": skipped_boards,
-                "stats": stats,
-                "delta_scores": deltas,
-                "evidence_matrix": evidence_matrix,
-            }
-            save_checkpoint(checkpoint_file, ckpt_data, agents_tuple, shadows_tuple)
+                if result_c1 is None or result_c2 is None:
+                    skipped_boards += 1
+                    print(f"  -> Boards {i + 1}/{i + 2} excluded from results.")
+                    continue
+
+                _record_game_stats(
+                    stats,
+                    deltas,
+                    evidence_matrix,
+                    result_c1,
+                    args.player_0,
+                    args.player_1,
+                    "config1",
+                    i + 1,
+                )
+                _record_game_stats(
+                    stats,
+                    deltas,
+                    evidence_matrix,
+                    result_c2,
+                    args.player_0,
+                    args.player_1,
+                    "config2",
+                    i + 2,
+                )
+
+                ckpt_data = {
+                    "board_idx": i + 1,
+                    "skipped_boards": skipped_boards,
+                    "stats": stats,
+                    "delta_scores": deltas,
+                    "evidence_matrix": evidence_matrix,
+                }
+                save_checkpoint(checkpoint_file, ckpt_data, agents_tuple, shadows_tuple)
+        else:
+            for i, b in enumerate(boards_data[start_index:], start=start_index):
+                # Config 1
+                print(
+                    f"\n========== Board {i + 1}/{len(boards_data)} | Config 1: {args.player_0} vs {args.player_1} =========="
+                )
+                game.load_setting(
+                    b["board"], b["chips1"], b["chips2"], b["location1"], b["location2"]
+                )
+                history_c1 = GameHistory.from_game(
+                    game,
+                    p0_type=args.player_0,
+                    p1_type=args.player_1,
+                    initiator=0,
+                    board_index=i + 1,
+                    config="config1",
+                )
+                result_c1 = run_single_game(
+                    game,
+                    p0_c1,
+                    p1_c1,
+                    history=history_c1,
+                    shadow_agents=shadows_c1,
+                    tracked_player=0,
+                    chat_history=args.full_chat_history,
+                )
+                path_c1 = os.path.join(dir_games, f"board_{i + 1}_c1.json")
+                if os.path.exists(path_c1):
+                    print(f"  -> Skipping save (already exists): {path_c1}")
+                else:
+                    history_c1.save(path_c1)
+
+                # Config 2
+                print(
+                    f"\n========== Board {i + 1}/{len(boards_data)} | Config 2: {args.player_1} vs {args.player_0} =========="
+                )
+                game.load_setting(
+                    b["board"], b["chips1"], b["chips2"], b["location1"], b["location2"]
+                )
+                history_c2 = GameHistory.from_game(
+                    game,
+                    p0_type=args.player_1,
+                    p1_type=args.player_0,
+                    initiator=1,
+                    board_index=i + 1,
+                    config="config2",
+                )
+                result_c2 = run_single_game(
+                    game,
+                    p0_c2,
+                    p1_c2,
+                    history=history_c2,
+                    shadow_agents=shadows_c2,
+                    tracked_player=1,
+                    chat_history=args.full_chat_history,
+                )
+                path_c2 = os.path.join(dir_games, f"board_{i + 1}_c2.json")
+                if os.path.exists(path_c2):
+                    print(f"  -> Skipping save (already exists): {path_c2}")
+                else:
+                    history_c2.save(path_c2)
+
+                # Skip & Record Tracking
+                if result_c1 is None or result_c2 is None:
+                    skipped_boards += 1
+                    print(f"  -> Board {i + 1} excluded from results.")
+                    continue
+
+                _record_game_stats(
+                    stats,
+                    deltas,
+                    evidence_matrix,
+                    result_c1,
+                    args.player_0,
+                    args.player_1,
+                    "config1",
+                    i + 1,
+                )
+                _record_game_stats(
+                    stats,
+                    deltas,
+                    evidence_matrix,
+                    result_c2,
+                    args.player_0,
+                    args.player_1,
+                    "config2",
+                    i + 1,
+                )
+
+                # Save Checkpoint
+                ckpt_data = {
+                    "board_idx": i,
+                    "skipped_boards": skipped_boards,
+                    "stats": stats,
+                    "delta_scores": deltas,
+                    "evidence_matrix": evidence_matrix,
+                }
+                save_checkpoint(checkpoint_file, ckpt_data, agents_tuple, shadows_tuple)
 
     # FINAL REPORTING AND ANALYSIS
 

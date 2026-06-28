@@ -1,6 +1,7 @@
 import threading
 from rich.columns import Columns
 from rich.console import Group
+from rich.align import Align
 from rich.panel import Panel
 from rich.text import Text
 from rich.live import Live
@@ -15,7 +16,7 @@ MD_COLOURS = ["white", "grey7", "magenta", "grey50", "yellow"]
 
 
 class Human:
-    def __init__(self, player_id) -> None:
+    def __init__(self, player_id, debug=False) -> None:
         self.player_id = player_id
         self.offer: list[int | None] = [None] * 5
         self.received_offer = [None] * 5
@@ -28,6 +29,7 @@ class Human:
         self.message_buffer: str = ""
         self.ctrl_c_pending: bool = False
         self._dirty: threading.Event = threading.Event()
+        self.debug = debug
 
     def init(self, game):
         self.game = game
@@ -157,9 +159,10 @@ class Human:
         )
 
         table = Table(title="")
-        table.add_column("")
+        table.add_column("", min_width=14)
         for i, v in enumerate(COLOURS):
-            table.add_column(self.colour(v, i))
+            table.add_column(self.colour(v, i), min_width=8, justify="center")
+        table.add_section()
 
         table.add_row("All chips", *[str(i) for i in self.game.bin_max])
         table.add_row("Your chips", *[str(i) for i in my_chips])
@@ -175,30 +178,23 @@ class Human:
         return table
 
     def _incoming_message_panel(self):
-        if not self.chat_log:
-            msg_text = Text("(no messages yet)", style="dim italic")
-            return Panel(msg_text, title="Chat history", expand=True)
-
-        trimmed = self.chat_log[-CHAT_HISTORY_MAX_MESSAGES:]
-        body = Text()
-        any_text = False
-        for entry in trimmed:
-            text = (entry.get("text") or "").strip()
-            speaker = entry.get("speaker", "?")
-            round_no = entry.get("round", "?")
-            tag = f"[R{round_no}, {speaker}]"
-            if text:
-                any_text = True
-                body.append(f"{tag}: ", style="bold")
-                body.append(f'"{text}"', style="italic")
-                body.append("\n")
-            else:
-                body.append(f"{tag}: (no message)\n", style="dim")
-        if not any_text:
-            msg_text = Text("(no messages with text yet)", style="dim italic")
+        last_opponent = None
+        for entry in reversed(self.chat_log):
+            if entry.get("speaker") == "opponent":
+                text = (entry.get("text") or "").strip()
+                if text:
+                    last_opponent = text
+                    break
+        if last_opponent:
+            body = Text(last_opponent, style="italic", overflow="fold")
         else:
-            msg_text = body
-        return Panel(msg_text, title="Chat history", expand=True)
+            body = Text("(no message from opponent)", style="dim italic")
+        return Panel(
+            body,
+            title="Opponent's last message",
+            expand=False,
+            width=73,
+        )
 
     def _offer_phase_renderable(self):
         left_panel = Panel(
@@ -208,7 +204,10 @@ class Human:
             self._offer_table_panel(),
             self._incoming_message_panel(),
         )
-        return Columns([left_panel, right_group], expand=True)
+        return Columns(
+            [left_panel, Align.center(right_group, vertical="top")],
+            expand=True,
+        )
 
     def _message_phase_renderable(self):
         body = (
@@ -243,7 +242,6 @@ class Human:
     ):
         self.initial_offer = False
         if received_offer is None:
-            print("initial offer")
             self.initial_offer = True
             received_offer = self.game.chip_sets[self.player_id]
         chip_offer = Game_ct.convert_code(received_offer, self.game.bin_max)

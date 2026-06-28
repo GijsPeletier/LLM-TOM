@@ -32,7 +32,8 @@ class HFAgent(BaseLLMAgent):
     _shared_tokenizers = {}
 
     def __init__(self, player_id, model_path, **kwargs):
-        super().__init__(player_id)
+        debug = kwargs.pop("debug", False)
+        super().__init__(player_id, debug=debug)
         self.model_name = model_path
         self.model = None
         self.tokenizer = None

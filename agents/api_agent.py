@@ -11,7 +11,8 @@ from google.genai.errors import ServerError
 
 class APIAgent(BaseLLMAgent):
     def __init__(self, player_id, provider, model_name=None, **kwargs):
-        super().__init__(player_id)  # Inherit game, history, and make_offer logic
+        debug = kwargs.pop("debug", False)
+        super().__init__(player_id, debug=debug)  # Inherit game, history, and make_offer logic
         self.provider = provider.lower()
 
         print(f"[{self.player_id}] Initializing {self.provider.capitalize()} client...")
