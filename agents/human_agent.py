@@ -27,6 +27,7 @@ class Human:
         self.chat_log: list[dict] = []
         self.phase: str = "offer"
         self.message_buffer: str = ""
+        self.thoughts_buffer: str = ""
         self.ctrl_c_pending: bool = False
         self._dirty: threading.Event = threading.Event()
         self.debug = debug
@@ -38,6 +39,7 @@ class Human:
         self.chat_log = []
         self.phase = "offer"
         self.message_buffer = ""
+        self.thoughts_buffer = ""
         self.ctrl_c_pending = False
         self._dirty = threading.Event()
         self._dirty.set()
@@ -48,7 +50,10 @@ class Human:
 
     def _handle_key(self, key):
         if key == keyboard.Key.esc:
-            if self.phase == "message":
+            if self.phase == "thoughts":
+                self.thoughts_buffer = ""
+                self.phase = "message"
+            elif self.phase == "message":
                 self.message_buffer = ""
                 self.phase = "offer"
             else:
@@ -60,6 +65,8 @@ class Human:
         if key == keyboard.Key.backspace:
             if self.phase == "offer":
                 self.offer_index = max(0, self.offer_index - 1)
+            elif self.phase == "thoughts":
+                self.thoughts_buffer = self.thoughts_buffer[:-1]
             else:
                 self.message_buffer = self.message_buffer[:-1]
             return
@@ -68,8 +75,10 @@ class Human:
             if self.phase == "offer":
                 self.offer = [i if i is not None else 0 for i in self.offer]
                 self.phase = "message"
-            else:
+            elif self.phase == "message":
                 self.outgoing_message = self.message_buffer[:MAX_MESSAGE_LENGTH]
+                self.phase = "thoughts"
+            else:
                 self.phase = "done"
                 self.offer_done = True
             return
@@ -95,6 +104,14 @@ class Human:
                     if len(self.message_buffer) < MAX_MESSAGE_LENGTH:
                         self.message_buffer += ch
                     return
+        elif self.phase == "thoughts":
+            if key == keyboard.Key.space:
+                self.thoughts_buffer += " "
+                return
+            for special, ch in ((keyboard.Key.tab, "\t"),):
+                if key == special:
+                    self.thoughts_buffer += ch
+                    return
 
         try:
             ch = key.char
@@ -109,6 +126,8 @@ class Human:
                 value = min(int(ch), self.game.bin_max[self.offer_index])
                 self.offer[self.offer_index] = value
                 self.offer_index = min(len(COLOURS) - 1, self.offer_index + 1)
+        elif self.phase == "thoughts":
+            self.thoughts_buffer += ch
         else:
             if len(self.message_buffer) < MAX_MESSAGE_LENGTH:
                 self.message_buffer += ch
@@ -227,9 +246,27 @@ class Human:
             expand=True,
         )
 
+    def _thoughts_phase_renderable(self):
+        body = (
+            Text(self.thoughts_buffer + "▌", style="bold")
+            if self.thoughts_buffer
+            else Text("▌", style="bold")
+        )
+        caption = Text(
+            "Type your internal reasoning/beliefs. Enter to finish. Esc to go back.",
+            style="dim",
+        )
+        return Panel(
+            Group(body, Text(""), caption),
+            title="Your internal thoughts",
+            expand=True,
+        )
+
     def update_offer_display(self):
         if self.phase == "message":
             return self._message_phase_renderable()
+        if self.phase == "thoughts":
+            return self._thoughts_phase_renderable()
         return self._offer_phase_renderable()
 
     def make_offer(
@@ -266,6 +303,7 @@ class Human:
         )
         self.outgoing_message = ""
         self.message_buffer = ""
+        self.thoughts_buffer = ""
         self.phase = "offer"
         self.offer_done = False
         self.ctrl_c_pending = False
@@ -313,7 +351,7 @@ class Human:
             offer=list(self.offer),
             message=chat_message,
             reasoning=None,
-            thoughts="Human move (no LLM reasoning).",
+            thoughts=self.thoughts_buffer.strip() or None,
             raw_response=None,
             prompt=None,
         )

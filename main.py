@@ -13,6 +13,7 @@ python main.py <player_0> <player_1>
 import argparse
 import json
 import os
+import random
 
 from rich.console import Console
 
@@ -22,6 +23,7 @@ from game.colored_trails import Game_ct
 from game.history import GameHistory
 from agents.tom_agent import Agent_ct
 from agents.api_agent import APIAgent
+from agents.openrouter_agent import OpenRouterAgent
 from agents.hf_agent import HFAgent
 from agents.shadow_agent import ShadowAgent, RandomShadowAgent
 from results.analysis import run_analysis_pipeline
@@ -134,6 +136,18 @@ def create_agent(agent_type, player_id, learning_speed=0.8, debug=False):
             return HFAgent(
                 player_id,
                 model_path="openai/gpt-oss-120b",
+                debug=debug,
+            )
+        case "qwen-small":
+            return HFAgent(
+                player_id,
+                model_path="Qwen/Qwen3-0.6B",
+                debug=debug,
+            )
+        case "openrouter":
+            return OpenRouterAgent(
+                player_id,
+                model_name="openai/gpt-oss-120b:free",
                 debug=debug,
             )
         case "human":
@@ -338,6 +352,7 @@ def run_single_human_game(
     agent_resp,
     history=None,
     chat_history=True,
+    deception=None,
 ):
     """Lean-stdout variant of `run_single_game` for matches involving a Human.
 
@@ -352,6 +367,9 @@ def run_single_human_game(
     Starting-info lines, `Game Ended | …`, and `Final Utilities: …` are kept.
     Returns the same 4-tuple as `run_single_game`. If the game errors,
     `None` is returned after stamping an "error" outcome into `history`.
+
+    If `deception` is not None, it is set on any agent that has a `deception`
+    attribute (i.e. LLM agents) after `init` is called.
     """
     console = Console()
     u_init = [
@@ -360,6 +378,8 @@ def run_single_human_game(
 
     for a in (agent_init, agent_resp):
         a.init(game)
+        if deception is not None and hasattr(a, "deception"):
+            a.deception = deception
 
     for i, role in enumerate(["Initiator", "Responder"]):
         if i == 1:
@@ -517,40 +537,326 @@ def _record_game_stats(
         )
 
 
+# PANEL EXPERIMENT
+
+VALID_GOAL_COORDS = [
+    (0, 0),
+    (0, 1),
+    (0, 3),
+    (0, 4),
+    (1, 0),
+    (1, 4),
+    (3, 0),
+    (3, 4),
+    (4, 0),
+    (4, 1),
+    (4, 3),
+    (4, 4),
+]
+
+
+def _augment_board(board_data: dict, seed_augment: int | str) -> dict:
+    """Return a colour-permuted, randomly-flipped copy of *board_data*.
+
+    Deterministic given *seed_augment*.  Permutes the 5 colours, remaps
+    chips accordingly, then applies a random horizontal and/or vertical
+    flip.  Goal-location indices are remapped to the correct entries
+    after flips.
+    """
+    local_rng = random.Random(str(seed_augment))
+
+    colours = list(range(5))
+    local_rng.shuffle(colours)
+
+    new_board = [[colours[cell] for cell in row] for row in board_data["board"]]
+
+    new_chips1 = [0] * 5
+    new_chips2 = [0] * 5
+    for i in range(5):
+        new_chips1[colours[i]] = board_data["chips1"][i]
+        new_chips2[colours[i]] = board_data["chips2"][i]
+
+    h_flip = local_rng.choice([True, False])
+    v_flip = local_rng.choice([True, False])
+
+    if h_flip or v_flip:
+        flipped = [[0] * 5 for _ in range(5)]
+        for r in range(5):
+            for c in range(5):
+                src_r = (4 - r) if v_flip else r
+                src_c = (4 - c) if h_flip else c
+                flipped[r][c] = new_board[src_r][src_c]
+        new_board = flipped
+
+    def _remap_loc(loc_idx):
+        r, c = VALID_GOAL_COORDS[loc_idx]
+        if v_flip:
+            r = 4 - r
+        if h_flip:
+            c = 4 - c
+        return VALID_GOAL_COORDS.index((r, c))
+
+    return {
+        "board": new_board,
+        "chips1": new_chips1,
+        "chips2": new_chips2,
+        "location1": _remap_loc(board_data["location1"]),
+        "location2": _remap_loc(board_data["location2"]),
+    }
+
+
+def run_panel_experiment(
+    llm_type: str,
+    *,
+    seed: int = 42,
+    normal_boards_count: int = 5,
+    advantage_boards_count: int = 5,
+    advantage_threshold: float = 100,
+    boards_file: str = "boards_20.json",
+    debug: bool = False,
+):
+    """Run a panel experiment: Human vs LLM across 20 games.
+
+    Loads *normal_boards_count* + *advantage_boards_count* unique boards.
+    Each board is played **twice** — once with deception ON, once OFF —
+    exactly 10 games apart.  The two plays use the same base board but
+    the second play applies a deterministic colour permutation and random
+    flips so the board geometry is not trivially recognisable.
+
+    The order of boards and whether deception precedes non-deception for
+    each board are both randomised (conditioned on *seed*).  Config 1/2
+    alternates across all 20 games, giving each board one config-1 and
+    one config-2 play.
+
+    Advantage boards are generated on-the-fly using
+    ``board_generation/find_utility_advantage.py`` (ToM-2 vs ToM-1).
+
+    Results save to ``results/panel_results/{llm_type}/seed_{seed}/``.
+    """
+    random.seed(seed)
+
+    normal_boards = load_boards_from_json(boards_file)
+    if len(normal_boards) < normal_boards_count:
+        print(f"Warning: only {len(normal_boards)} normal boards available, using all.")
+        normal_boards_count = len(normal_boards)
+    normal_boards = normal_boards[:normal_boards_count]
+
+    try:
+        from board_generation.find_utility_advantage import evaluate_single_board
+    except ImportError:
+        print(
+            "Error: cannot import board_generation.find_utility_advantage."
+            " Make sure the project root is on PYTHONPATH."
+        )
+        return
+
+    advantage_boards: list[dict] = []
+    max_search = max(500, advantage_boards_count * 100)
+    print(
+        f"Generating {advantage_boards_count} advantage boards "
+        f"(tom2 vs tom1, threshold={advantage_threshold}, "
+        f"max_search={max_search})..."
+    )
+    for _ in range(max_search):
+        if len(advantage_boards) >= advantage_boards_count:
+            break
+        gen_game = Game_ct()
+        valid = gen_game.init()
+        if valid is False:
+            continue
+        if gen_game.locations[0] == gen_game.locations[1]:
+            continue
+        task = {
+            "board": [row[:] for row in gen_game.board],
+            "chips_p0": gen_game.chips[0][:],
+            "chips_p1": gen_game.chips[1][:],
+            "goal_p0": gen_game.locations[0],
+            "goal_p1": gen_game.locations[1],
+            "tom_low": 1,
+            "tom_high": 2,
+            "threshold": advantage_threshold,
+            "board_index": len(advantage_boards),
+        }
+        result = evaluate_single_board(task)
+        if result is not None:
+            advantage_boards.append(
+                {
+                    "board": result["board"],
+                    "chips1": result["chips1"],
+                    "chips2": result["chips2"],
+                    "location1": result["location1"],
+                    "location2": result["location2"],
+                }
+            )
+            avg_adv = result["advantage"]["avg_self_mirrored"]
+            print(
+                f"  [{len(advantage_boards)}/{advantage_boards_count}] "
+                f"advantage board (avg_adv={avg_adv:+.0f})"
+            )
+
+    if len(advantage_boards) < advantage_boards_count:
+        print(
+            f"Warning: only found {len(advantage_boards)}/{advantage_boards_count} "
+            f"advantage boards after {max_search} attempts"
+        )
+        advantage_boards_count = len(advantage_boards)
+
+    board_pairs = [(b, "normal") for b in normal_boards] + [
+        (b, "advantage") for b in advantage_boards
+    ]
+    rng = random.Random(seed)
+    rng.shuffle(board_pairs)
+
+    num_boards = len(board_pairs)
+    deception_first_list: list[bool] = []
+    for board_idx in range(num_boards):
+        pair_rng = random.Random(f"{seed}_{board_idx}")
+        deception_first_list.append(pair_rng.choice([True, False]))
+
+    schedule: list[dict] = []
+    for slot in range(num_boards * 2):
+        board_idx = slot % num_boards
+        is_second = slot >= num_boards
+        board_data, board_type = board_pairs[board_idx]
+
+        deception_first = deception_first_list[board_idx]
+        deception = (not deception_first) if is_second else deception_first
+
+        config = "config1" if slot % 2 == 0 else "config2"
+
+        used_board = board_data
+        if is_second:
+            used_board = _augment_board(board_data, f"{seed}_{board_idx}_aug")
+
+        schedule.append(
+            {
+                "board": used_board,
+                "deception": deception,
+                "config": config,
+                "board_type": board_type,
+            }
+        )
+
+    human_p0 = Human(0, debug=debug)
+    human_p1 = Human(1, debug=debug)
+    llm_p0 = create_agent(llm_type, 0, debug=debug)
+    llm_p1 = create_agent(llm_type, 1, debug=debug)
+
+    output_dir = os.path.join("results", "panel_results", llm_type, f"seed_{seed}")
+    os.makedirs(output_dir, exist_ok=True)
+
+    deltas_human: list[float] = []
+    deltas_llm: list[float] = []
+    results_by_cell: dict[tuple, list[float]] = {}
+    game = Game_ct()
+
+    for game_idx, entry in enumerate(schedule):
+        board_data = entry["board"]
+        deception_val = entry["deception"]
+        config = entry["config"]
+        board_type = entry["board_type"]
+
+        game.load_setting(
+            board_data["board"],
+            board_data["chips1"],
+            board_data["chips2"],
+            board_data["location1"],
+            board_data["location2"],
+        )
+
+        if config == "config1":
+            agent_init, agent_resp = human_p0, llm_p1
+            human_is_p0 = True
+        else:
+            agent_init, agent_resp = llm_p0, human_p1
+            human_is_p0 = False
+
+        decept_label = "dec" if deception_val else "nodec"
+        print(
+            f"\n========== Game {game_idx + 1}/{len(schedule)} | "
+            f"{board_type} | {decept_label} | {config} =========="
+        )
+
+        history = GameHistory.from_game(
+            game,
+            p0_type="human" if human_is_p0 else llm_type,
+            p1_type=llm_type if human_is_p0 else "human",
+            initiator=0 if human_is_p0 else 1,
+            board_index=game_idx + 1,
+            config=config,
+        )
+
+        result = run_single_human_game(
+            game,
+            agent_init,
+            agent_resp,
+            history=history,
+            chat_history=True,
+            deception=deception_val,
+        )
+
+        label = f"{board_type}_{decept_label}_{config}"
+        path = os.path.join(output_dir, f"game_{game_idx + 1}_{label}.json")
+        history.save(path)
+
+        if result is None:
+            print("  -> Error, skipping")
+            continue
+
+        delta_0, delta_1, _, _ = result
+        if human_is_p0:
+            human_delta, llm_delta = delta_0, delta_1
+        else:
+            llm_delta, human_delta = delta_0, delta_1
+
+        deltas_human.append(human_delta)
+        deltas_llm.append(llm_delta)
+
+        cell_key = (deception_val, board_type)
+        results_by_cell.setdefault(cell_key, []).append(human_delta)
+
+    # --- Summary ---
+    print(f"\n{'=' * 80}")
+    print(f"PANEL RESULTS — {llm_type} (seed={seed})")
+    print(f"{'=' * 80}")
+    print(f"{'':>20} {'Deception ON':>15} {'Deception OFF':>15}")
+    print(f"{'-' * 50}")
+
+    for btype in ("normal", "advantage"):
+        row = f"{btype.capitalize()} boards"
+        for dec in (True, False):
+            vals = results_by_cell.get((dec, btype), [])
+            avg = sum(vals) / len(vals) if vals else float("nan")
+            row += f"  {avg:>+8.1f}"
+        print(row)
+
+    print(f"{'-' * 50}")
+    row_all = f"{'Overall':>20}"
+    for dec in (True, False):
+        vals = [
+            v for (d, bt), vlist in results_by_cell.items() if d == dec for v in vlist
+        ]
+        avg = sum(vals) / len(vals) if vals else float("nan")
+        row_all += f"  {avg:>+8.1f}"
+    print(row_all)
+    print()
+
+    h_avg = sum(deltas_human) / len(deltas_human) if deltas_human else float("nan")
+    l_avg = sum(deltas_llm) / len(deltas_llm) if deltas_llm else float("nan")
+    print(f"Human avg delta ({len(deltas_human)} games): {h_avg:+.1f}")
+    print(f"LLM avg delta   ({len(deltas_llm)} games): {l_avg:+.1f}")
+
+    delta_path = os.path.join(output_dir, "delta_scores.json")
+    with open(delta_path, "w") as f:
+        json.dump({"human": deltas_human, "llm": deltas_llm}, f, indent=2)
+    print(f"\nResults saved to {output_dir}/")
+
+
 # MAIN EXECUTION
 
 
-def main():
+def main(args):
     """Initializes the agents, runs the games, calls the post-hoc analyses and saves the results."""
-    parser = argparse.ArgumentParser(description="Run Colored Trails tournament.")
-    agent_choices = [
-        "tom0",
-        "tom1",
-        "tom2",
-        "qwen",
-        "llama",
-        "gpt-oss",
-        "gemini",
-        "claude",
-        "human",
-    ]
-
-    parser.add_argument("player_0", type=str)
-    parser.add_argument("player_1", type=str)
-    parser.add_argument("--boards-file", type=str, default="boards_20.json")
-    parser.add_argument("--num-games", type=int, default=100)
-    parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--learning-speed", type=float, default=0.8)
-    parser.add_argument("--debug", action=argparse.BooleanOptionalAction, default=False)
-    parser.add_argument(
-        "--full-chat-history",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="If enabled (default), LLM/Human agents see the full chat log of "
-        "all messages exchanged so far. If disabled, they only see the "
-        "opponent's most recent message (legacy single-message mode).",
-    )
-    args = parser.parse_args()
 
     # --- Directory Setup ---
     dir_checkpoints = os.path.join("results", "checkpoints")
@@ -867,4 +1173,71 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run Colored Trails.")
+    parser.add_argument(
+        "--panel",
+        type=str,
+        default=None,
+        metavar="LLM_TYPE",
+        help="Run panel experiment (Human vs LLM) instead of a tournament.",
+    )
+    parser.add_argument(
+        "player_0",
+        type=str,
+        nargs="?",
+        default=None,
+        help="First player (tournament mode).",
+    )
+    parser.add_argument(
+        "player_1",
+        type=str,
+        nargs="?",
+        default=None,
+        help="Second player (tournament mode).",
+    )
+    parser.add_argument(
+        "--boards-file",
+        type=str,
+        default="boards_20.json",
+        help="Path to the JSON file with pre-generated boards.",
+    )
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--debug", action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument(
+        "--full-chat-history",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument("--num-games", type=int, default=100)
+    parser.add_argument("--learning-speed", type=float, default=0.8)
+    parser.add_argument(
+        "--normal-boards-count",
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
+        "--advantage-boards-count",
+        type=int,
+        default=5,
+    )
+    parser.add_argument(
+        "--advantage-threshold",
+        type=float,
+        default=100,
+    )
+    cli_args = parser.parse_args()
+
+    if cli_args.panel:
+        run_panel_experiment(
+            cli_args.panel,
+            seed=cli_args.seed,
+            normal_boards_count=cli_args.normal_boards_count,
+            advantage_boards_count=cli_args.advantage_boards_count,
+            advantage_threshold=cli_args.advantage_threshold,
+            boards_file=cli_args.boards_file,
+            debug=cli_args.debug,
+        )
+    else:
+        if not cli_args.player_0 or not cli_args.player_1:
+            parser.error("player_0 and player_1 are required when not using --panel")
+        main(cli_args)

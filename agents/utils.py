@@ -11,6 +11,11 @@ MAX_MESSAGE_LENGTH = 200
 
 CHAT_HISTORY_MAX_MESSAGES = 50
 
+DECEPTION_PROMPT = """
+
+Note that it is allowed to deceive your opponent, and sometimes it is beneficial. Your opponent might infer your goal location based on the proposal you make. Consider which belief you want your opponent to hold, and how it serves your strategy."""
+
+
 def format_board(board, goal_r, goal_c):
     """Formats the board with row/col indices and color names."""
     color_map = {0: "White", 1: "Black", 2: "Magenta", 3: "Gray", 4: "Yellow"}
@@ -32,6 +37,7 @@ def format_board(board, goal_r, goal_c):
         lines.append(f"{r}:  " + "   ".join(row_cells))
     return "\n".join(lines)
 
+
 def format_chips(chip_list):
     """Converts list [1, 0, 2...] into string 'White:1, Black:0, Magenta:2...'"""
     color_names = ["White", "Black", "Magenta", "Gray", "Yellow"]
@@ -45,13 +51,17 @@ def parse_response(text):
     """Extracts and parses the JSON object from the LLM's response text. Returns None on failure."""
     try:
         # First attempt: Look for JSON explicitly fenced in markdown blocks (most reliable)
-        match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', text, re.DOTALL | re.IGNORECASE)
+        match = re.search(
+            r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL | re.IGNORECASE
+        )
         if match:
             return json.loads(match.group(1))
 
         # Second attempt: Look for a JSON object that specifically contains our required "action" key.
         # This prevents matching random {1 Yellow} chip references in the reasoning text.
-        match_fallback = re.search(r'\{\s*"action"\s*:.*\}', text, re.DOTALL | re.IGNORECASE)
+        match_fallback = re.search(
+            r'\{\s*"action"\s*:.*\}', text, re.DOTALL | re.IGNORECASE
+        )
         if match_fallback:
             return json.loads(match_fallback.group(0))
 
@@ -71,10 +81,11 @@ def extract_thoughts(raw_response: str) -> str | None:
     """
     if not raw_response:
         return None
-    match = re.search(r'```(?:json)?', raw_response, re.IGNORECASE)
+    match = re.search(r"```(?:json)?", raw_response, re.IGNORECASE)
     if match:
         return raw_response[: match.start()].strip() or None
     return raw_response.strip() or None
+
 
 def _format_chat_history_block(chat_log, fallback_incoming_message=None):
     """Render the chat-history block for the LLM prompt.
@@ -94,7 +105,7 @@ def _format_chat_history_block(chat_log, fallback_incoming_message=None):
             text = (entry.get("text") or "").strip()
             if text:
                 any_text = True
-                lines.append(f"- [R{entry['round']}, {entry['speaker']}] \"{text}\"")
+                lines.append(f'- [R{entry["round"]}, {entry["speaker"]}] "{text}"')
             else:
                 lines.append(f"- [R{entry['round']}, {entry['speaker']}] (no message)")
         if not any_text:
@@ -104,14 +115,19 @@ def _format_chat_history_block(chat_log, fallback_incoming_message=None):
     if fallback_incoming_message is not None and str(fallback_incoming_message).strip():
         return (
             f"PREVIOUS MESSAGE FROM OPPONENT:\n"
-            f"\"{str(fallback_incoming_message).strip()}\"\n"
+            f'"{str(fallback_incoming_message).strip()}"\n'
         )
     return ""
 
 
 def construct_prompt(
-    player_id, game, history, offer_received,
-    incoming_message=None, chat_log=None,
+    player_id,
+    game,
+    history,
+    offer_received,
+    incoming_message=None,
+    chat_log=None,
+    deception=False,
 ):
     """Constructs the prompt sent to the LLM based on the current game state.
 
@@ -122,8 +138,18 @@ def construct_prompt(
     """
     my_goal_idx = game.locations[player_id]
     goal_r, goal_c = [
-        (0, 0), (0, 1), (0, 3), (0, 4), (1, 0), (1, 4),
-        (3, 0), (3, 4), (4, 0), (4, 1), (4, 3), (4, 4)
+        (0, 0),
+        (0, 1),
+        (0, 3),
+        (0, 4),
+        (1, 0),
+        (1, 4),
+        (3, 0),
+        (3, 4),
+        (4, 0),
+        (4, 1),
+        (4, 3),
+        (4, 4),
     ][my_goal_idx]
 
     my_chips = Game_ct.convert_code(game.chip_sets[player_id], game.bin_max)
@@ -146,8 +172,10 @@ def construct_prompt(
     else:
         offer_vec = Game_ct.convert_code(offer_received, game.bin_max)
         offer_str = format_chips(offer_vec)
-        status_line = (f"The current offer on the table (what YOU will hold) is: {offer_str}. "
-                       f"\nYou can either propose a counter-offer, accept the offer, or withdraw from negotiations completely.")
+        status_line = (
+            f"The current offer on the table (what YOU will hold) is: {offer_str}. "
+            f"\nYou can either propose a counter-offer, accept the offer, or withdraw from negotiations completely."
+        )
         allowed_actions = '"propose", "accept", or "withdraw"'
 
     prompt = f"""You are Player {player_id} in Colored Trails.
@@ -188,6 +216,7 @@ Think step by step before deciding, and then output a JSON object with your move
 - "action": {allowed_actions}
 - "offer": [w, b, m, g, y] (List of 5 integers. The count of White, Black, Magenta, Gray, Yellow chips YOU will hold.
 - "message": "A short free-text message (max {MAX_MESSAGE_LENGTH} chars) that will be sent to your opponent along with this offer. You may leave it empty."
-- "reasoning": "SHORT Strategy explanation"
+- "reasoning": "SHORT Strategy explanation"{DECEPTION_PROMPT if deception else ""}
 """
     return prompt
+

@@ -77,6 +77,7 @@ LEARNING_SPEED = 0.8
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def format_matchup_result(result):
     """Format a single matchup result as 'D(+x,+y)' or 'F(+x,+y)'."""
     tag = "D" if result["agreed"] else "F"
@@ -87,10 +88,15 @@ def format_matchup_result(result):
 # Game loop
 # ---------------------------------------------------------------------------
 
+
 def run_negotiation(game, initiator, responder):
     """Play one full negotiation between two agents on the given game board."""
-    initiator_start_utility = game.utility_function[game.locations[0]][game.chip_sets[0]]
-    responder_start_utility = game.utility_function[game.locations[1]][game.chip_sets[1]]
+    initiator_start_utility = game.utility_function[game.locations[0]][
+        game.chip_sets[0]
+    ]
+    responder_start_utility = game.utility_function[game.locations[1]][
+        game.chip_sets[1]
+    ]
 
     initiator.init(game)
     responder.init(game)
@@ -102,9 +108,9 @@ def run_negotiation(game, initiator, responder):
 
     for round_number in range(1, MAX_NEGOTIATION_ROUNDS + 1):
         if offer_on_table is None:
-            offer = agents[0].make_offer()
+            offer, _ = agents[0].make_offer()
         else:
-            offer = agents[current_player].make_offer(
+            offer, _ = agents[current_player].make_offer(
                 game.flip_array[offer_on_table]
             )
 
@@ -120,19 +126,27 @@ def run_negotiation(game, initiator, responder):
 
     if agreement_reached:
         proposer = 1 - current_player
-        final_chips_p0 = (offer_on_table if proposer == 0
-                          else game.flip_array[offer_on_table])
-        final_chips_p1 = (game.flip_array[offer_on_table] if proposer == 0
-                          else offer_on_table)
+        final_chips_p0 = (
+            offer_on_table if proposer == 0 else game.flip_array[offer_on_table]
+        )
+        final_chips_p1 = (
+            game.flip_array[offer_on_table] if proposer == 0 else offer_on_table
+        )
     else:
         final_chips_p0 = game.chip_sets[0]
         final_chips_p1 = game.chip_sets[1]
 
     negotiation_cost = round_number * COST_PER_ROUND
-    initiator_gain = (game.utility_function[game.locations[0]][final_chips_p0]
-                      - negotiation_cost - initiator_start_utility)
-    responder_gain = (game.utility_function[game.locations[1]][final_chips_p1]
-                      - negotiation_cost - responder_start_utility)
+    initiator_gain = (
+        game.utility_function[game.locations[0]][final_chips_p0]
+        - negotiation_cost
+        - initiator_start_utility
+    )
+    responder_gain = (
+        game.utility_function[game.locations[1]][final_chips_p1]
+        - negotiation_cost
+        - responder_start_utility
+    )
 
     return initiator_gain, responder_gain, agreement_reached, round_number
 
@@ -141,8 +155,10 @@ def run_negotiation(game, initiator, responder):
 # Single matchup wrapper
 # ---------------------------------------------------------------------------
 
-def play_matchup(board, chips_p0, chips_p1, goal_p0, goal_p1,
-                 tom_level_p0, tom_level_p1):
+
+def play_matchup(
+    board, chips_p0, chips_p1, goal_p0, goal_p1, tom_level_p0, tom_level_p1
+):
     """Set up a fresh game and run one negotiation."""
     game = Game_ct()
     game.load_setting(board, chips_p0[:], chips_p1[:], goal_p0, goal_p1)
@@ -153,10 +169,10 @@ def play_matchup(board, chips_p0, chips_p1, goal_p0, goal_p1,
     p0_gain, p1_gain, agreed, rounds = run_negotiation(game, agent_p0, agent_p1)
 
     return {
-        "p0_gain":    p0_gain,
-        "p1_gain":    p1_gain,
-        "agreed":     agreed,
-        "rounds":     rounds,
+        "p0_gain": p0_gain,
+        "p1_gain": p1_gain,
+        "agreed": agreed,
+        "rounds": rounds,
         "total_gain": p0_gain + p1_gain,
     }
 
@@ -165,27 +181,38 @@ def play_matchup(board, chips_p0, chips_p1, goal_p0, goal_p1,
 # Advantage computation
 # ---------------------------------------------------------------------------
 
+
 def compute_advantage(original_results, mirrored_results, label_high, label_low):
     """
     Measure how much better the high-order agent performs than the low-order
     agent, averaged across both seat orientations.
     """
-    key_low_v_low   = f"{label_low}v{label_low}"
-    key_high_v_low  = f"{label_high}v{label_low}"
-    key_low_v_high  = f"{label_low}v{label_high}"
+    key_low_v_low = f"{label_low}v{label_low}"
+    key_high_v_low = f"{label_high}v{label_low}"
+    key_low_v_high = f"{label_low}v{label_high}"
 
     orig = original_results
     mirr = mirrored_results
 
-    orig_initiator_adv = orig[key_high_v_low]["p0_gain"] - orig[key_low_v_low]["p0_gain"]
-    orig_responder_adv = orig[key_low_v_high]["p1_gain"] - orig[key_low_v_low]["p1_gain"]
+    orig_initiator_adv = (
+        orig[key_high_v_low]["p0_gain"] - orig[key_low_v_low]["p0_gain"]
+    )
+    orig_responder_adv = (
+        orig[key_low_v_high]["p1_gain"] - orig[key_low_v_low]["p1_gain"]
+    )
 
-    mirr_initiator_adv = mirr[key_high_v_low]["p0_gain"] - mirr[key_low_v_low]["p0_gain"]
-    mirr_responder_adv = mirr[key_low_v_high]["p1_gain"] - mirr[key_low_v_low]["p1_gain"]
+    mirr_initiator_adv = (
+        mirr[key_high_v_low]["p0_gain"] - mirr[key_low_v_low]["p0_gain"]
+    )
+    mirr_responder_adv = (
+        mirr[key_low_v_high]["p1_gain"] - mirr[key_low_v_low]["p1_gain"]
+    )
 
     avg_self_advantage = (
-        orig_initiator_adv + orig_responder_adv
-        + mirr_initiator_adv + mirr_responder_adv
+        orig_initiator_adv
+        + orig_responder_adv
+        + mirr_initiator_adv
+        + mirr_responder_adv
     ) / 4
 
     orig_surplus_adv = (
@@ -203,7 +230,7 @@ def compute_advantage(original_results, mirrored_results, label_high, label_low)
         "orig_responder": orig_responder_adv,
         "mirr_initiator": mirr_initiator_adv,
         "mirr_responder": mirr_responder_adv,
-        "avg_self_mirrored":    avg_self_advantage,
+        "avg_self_mirrored": avg_self_advantage,
         "avg_surplus_mirrored": avg_surplus_advantage,
     }
 
@@ -211,6 +238,7 @@ def compute_advantage(original_results, mirrored_results, label_high, label_low)
 # ---------------------------------------------------------------------------
 # Board evaluation (runs in worker processes)
 # ---------------------------------------------------------------------------
+
 
 def evaluate_single_board(task):
     """
@@ -220,23 +248,23 @@ def evaluate_single_board(task):
     Receives a single dict with all needed info, returns a result dict
     or None if the board does not meet the threshold.
     """
-    board       = task["board"]
-    chips_p0    = task["chips_p0"]
-    chips_p1    = task["chips_p1"]
-    goal_p0     = task["goal_p0"]
-    goal_p1     = task["goal_p1"]
-    tom_low     = task["tom_low"]
-    tom_high    = task["tom_high"]
-    threshold   = task["threshold"]
+    board = task["board"]
+    chips_p0 = task["chips_p0"]
+    chips_p1 = task["chips_p1"]
+    goal_p0 = task["goal_p0"]
+    goal_p1 = task["goal_p1"]
+    tom_low = task["tom_low"]
+    tom_high = task["tom_high"]
+    threshold = task["threshold"]
     board_index = task["board_index"]
 
-    label_low  = f"tom{tom_low}"
+    label_low = f"tom{tom_low}"
     label_high = f"tom{tom_high}"
 
     matchup_configs = [
-        (f"{label_low}v{label_low}",   tom_low,  tom_low),
-        (f"{label_high}v{label_low}",  tom_high, tom_low),
-        (f"{label_low}v{label_high}",  tom_low,  tom_high),
+        (f"{label_low}v{label_low}", tom_low, tom_low),
+        (f"{label_high}v{label_low}", tom_high, tom_low),
+        (f"{label_low}v{label_high}", tom_low, tom_high),
         (f"{label_high}v{label_high}", tom_high, tom_high),
     ]
 
@@ -264,14 +292,18 @@ def evaluate_single_board(task):
     # --- Compute starting utilities for metadata ---
     game_ref = Game_ct()
     game_ref.load_setting(board, chips_p0[:], chips_p1[:], goal_p0, goal_p1)
-    p0_start_utility = game_ref.utility_function[game_ref.locations[0]][game_ref.chip_sets[0]]
-    p1_start_utility = game_ref.utility_function[game_ref.locations[1]][game_ref.chip_sets[1]]
+    p0_start_utility = game_ref.utility_function[game_ref.locations[0]][
+        game_ref.chip_sets[0]
+    ]
+    p1_start_utility = game_ref.utility_function[game_ref.locations[1]][
+        game_ref.chip_sets[1]
+    ]
 
     return {
         "board_index": board_index,
-        "board":     board,
-        "chips1":    chips_p0,
-        "chips2":    chips_p1,
+        "board": board,
+        "chips1": chips_p0,
+        "chips2": chips_p1,
         "location1": goal_p0,
         "location2": goal_p1,
         "p0_initial_utility": p0_start_utility,
@@ -291,37 +323,71 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
         description="Find Colored Trails boards where a higher-order ToM agent "
-                    "outperforms a lower-order one by a specified utility margin "
-                    "(seat-controlled via mirroring)."
+        "outperforms a lower-order one by a specified utility margin "
+        "(seat-controlled via mirroring)."
     )
-    parser.add_argument("--tom-low", type=int, default=0,
-                        help="ToM level for the baseline (lower) agent (default: 0)")
-    parser.add_argument("--tom-high", type=int, default=1,
-                        help="ToM level for the upgraded (higher) agent (default: 1)")
-    parser.add_argument("--target", type=int, default=50,
-                        help="How many qualifying boards to collect (default: 50)")
-    parser.add_argument("--max-search", type=int, default=2000,
-                        help="Maximum random boards to generate (default: 2000)")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="Random seed for reproducibility (default: 42)")
-    parser.add_argument("--threshold", type=float, default=100,
-                        help="Minimum avg_self_mirrored advantage to keep a board (default: 100)")
-    parser.add_argument("--workers", type=int, default=None,
-                        help="Number of parallel worker processes (default: all CPUs)")
-    parser.add_argument("--out-dir", type=str, default="board_generation",
-                        help="Directory for output JSON (default: board_generation)")
+    parser.add_argument(
+        "--tom-low",
+        type=int,
+        default=0,
+        help="ToM level for the baseline (lower) agent (default: 0)",
+    )
+    parser.add_argument(
+        "--tom-high",
+        type=int,
+        default=1,
+        help="ToM level for the upgraded (higher) agent (default: 1)",
+    )
+    parser.add_argument(
+        "--target",
+        type=int,
+        default=50,
+        help="How many qualifying boards to collect (default: 50)",
+    )
+    parser.add_argument(
+        "--max-search",
+        type=int,
+        default=2000,
+        help="Maximum random boards to generate (default: 2000)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed for reproducibility (default: 42)",
+    )
+    parser.add_argument(
+        "--threshold",
+        type=float,
+        default=100,
+        help="Minimum avg_self_mirrored advantage to keep a board (default: 100)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of parallel worker processes (default: all CPUs)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=str,
+        default="board_generation",
+        help="Directory for output JSON (default: board_generation)",
+    )
     args = parser.parse_args()
 
     if args.tom_high <= args.tom_low:
-        parser.error(f"--tom-high ({args.tom_high}) must be greater than "
-                     f"--tom-low ({args.tom_low})")
+        parser.error(
+            f"--tom-high ({args.tom_high}) must be greater than "
+            f"--tom-low ({args.tom_low})"
+        )
 
     num_workers = args.workers or multiprocessing.cpu_count()
 
     random.seed(args.seed)
     os.makedirs(args.out_dir, exist_ok=True)
 
-    label_low  = f"tom{args.tom_low}"
+    label_low = f"tom{args.tom_low}"
     label_high = f"tom{args.tom_high}"
     key_lvl = f"{label_low}v{label_low}"
     key_hvl = f"{label_high}v{label_low}"
@@ -330,17 +396,20 @@ if __name__ == "__main__":
     # -------------------------------------------------------------------
     # PHASE 1: Generate boards sequentially (fast, needs deterministic seed)
     # -------------------------------------------------------------------
-    print(f"Searching for {args.target} boards where ToM-{args.tom_high} "
-          f"beats ToM-{args.tom_low} by >= {args.threshold} utility")
+    print(
+        f"Searching for {args.target} boards where ToM-{args.tom_high} "
+        f"beats ToM-{args.tom_low} by >= {args.threshold} utility"
+    )
     print(f"Using MIRRORED matchups to control for seat advantage")
-    print(f"Workers: {num_workers} | Seed: {args.seed} | "
-          f"Max search: {args.max_search}\n")
+    print(
+        f"Workers: {num_workers} | Seed: {args.seed} | Max search: {args.max_search}\n"
+    )
 
     print(f"Phase 1: Generating {args.max_search} candidate boards...")
 
     tasks = []
     stage1_rejected_reachability = 0
-    stage1_rejected_same_goal    = 0
+    stage1_rejected_same_goal = 0
 
     for board_index in range(args.max_search):
         game = Game_ct()
@@ -354,17 +423,19 @@ if __name__ == "__main__":
             stage1_rejected_same_goal += 1
             continue
 
-        tasks.append({
-            "board_index": board_index,
-            "board":       [row[:] for row in game.board],
-            "chips_p0":    game.chips[0][:],
-            "chips_p1":    game.chips[1][:],
-            "goal_p0":     game.locations[0],
-            "goal_p1":     game.locations[1],
-            "tom_low":     args.tom_low,
-            "tom_high":    args.tom_high,
-            "threshold":   args.threshold,
-        })
+        tasks.append(
+            {
+                "board_index": board_index,
+                "board": [row[:] for row in game.board],
+                "chips_p0": game.chips[0][:],
+                "chips_p1": game.chips[1][:],
+                "goal_p0": game.locations[0],
+                "goal_p1": game.locations[1],
+                "tom_low": args.tom_low,
+                "tom_high": args.tom_high,
+                "threshold": args.threshold,
+            }
+        )
 
     print(f"  Attempted:                  {args.max_search}")
     print(f"  Rejected (reachability):    {stage1_rejected_reachability}")
@@ -375,8 +446,9 @@ if __name__ == "__main__":
     # PHASE 2: Evaluate boards in parallel (slow, CPU-bound)
     # -------------------------------------------------------------------
     # Define output filename early so checkpoints can use it.
-    filename = (f"{label_high}_vs_{label_low}"
-                f"_advantage_mirrored_{int(args.threshold)}.json")
+    filename = (
+        f"{label_high}_vs_{label_low}_advantage_mirrored_{int(args.threshold)}.json"
+    )
 
     print(f"Phase 2: Evaluating across {num_workers} workers...")
 
@@ -389,13 +461,15 @@ if __name__ == "__main__":
 
             if result is None:
                 if completed % 50 == 0:
-                    print(f"  [{completed}/{len(tasks)} evaluated, "
-                          f"{len(qualifying_boards)} qualifying so far]")
+                    print(
+                        f"  [{completed}/{len(tasks)} evaluated, "
+                        f"{len(qualifying_boards)} qualifying so far]"
+                    )
                 continue
 
             qualifying_boards.append(result)
 
-            avg_adv  = result["advantage"]["avg_self_mirrored"]
+            avg_adv = result["advantage"]["avg_self_mirrored"]
             original = result["original_matchups"]
             mirrored = result["mirrored_matchups"]
 
@@ -414,25 +488,27 @@ if __name__ == "__main__":
             # Save intermediate results every 10 qualifying boards
             if len(qualifying_boards) % 10 == 0:
                 intermediate = {
-                    'metadata': {
-                        'scenario': f'{label_high}_vs_{label_low}_advantage_mirrored',
-                        'status': 'in_progress',
-                        'count': len(qualifying_boards),
-                        'candidates_attempted': args.max_search,
-                        'stage1_rejected_reachability': stage1_rejected_reachability,
-                        'stage1_rejected_same_goal': stage1_rejected_same_goal,
-                        'stage1_passed': len(tasks),
-                        'evaluated_so_far': completed,
-                        'tom_high': args.tom_high,
-                        'tom_low': args.tom_low,
-                        'threshold': args.threshold,
+                    "metadata": {
+                        "scenario": f"{label_high}_vs_{label_low}_advantage_mirrored",
+                        "status": "in_progress",
+                        "count": len(qualifying_boards),
+                        "candidates_attempted": args.max_search,
+                        "stage1_rejected_reachability": stage1_rejected_reachability,
+                        "stage1_rejected_same_goal": stage1_rejected_same_goal,
+                        "stage1_passed": len(tasks),
+                        "evaluated_so_far": completed,
+                        "tom_high": args.tom_high,
+                        "tom_low": args.tom_low,
+                        "threshold": args.threshold,
                     },
-                    'boards': [dict(b) for b in qualifying_boards],
+                    "boards": [dict(b) for b in qualifying_boards],
                 }
                 checkpoint_path = os.path.join(args.out_dir, filename)
-                with open(checkpoint_path, 'w') as ckpt:
+                with open(checkpoint_path, "w") as ckpt:
                     json.dump(intermediate, ckpt, indent=2)
-                print(f'  ** Checkpoint saved: {len(qualifying_boards)} boards to {checkpoint_path}')
+                print(
+                    f"  ** Checkpoint saved: {len(qualifying_boards)} boards to {checkpoint_path}"
+                )
 
             if len(qualifying_boards) >= args.target:
                 pool.terminate()
@@ -448,9 +524,9 @@ if __name__ == "__main__":
         entry.pop("board_index", None)
 
     # --- Summary ---
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SEARCH COMPLETE")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Comparison:                 ToM-{args.tom_high} vs ToM-{args.tom_low}")
     print(f"Attempted:                  {args.max_search}")
     print(f"Rejected (reachability):    {stage1_rejected_reachability}")
@@ -459,11 +535,12 @@ if __name__ == "__main__":
     print(f"Evaluated:                  {completed}")
     print(f"Qualifying (>= {args.threshold}): {len(qualifying_boards)}")
     if completed > 0:
-        print(f"Hit rate:                   {len(qualifying_boards) / completed * 100:.1f}%")
+        print(
+            f"Hit rate:                   {len(qualifying_boards) / completed * 100:.1f}%"
+        )
 
     if qualifying_boards:
-        advantages = [b["advantage"]["avg_self_mirrored"]
-                      for b in qualifying_boards]
+        advantages = [b["advantage"]["avg_self_mirrored"] for b in qualifying_boards]
         print(f"\nAdvantage distribution (mirrored, seat-controlled):")
         print(f"  Min:    {min(advantages):+.0f}")
         print(f"  Median: {sorted(advantages)[len(advantages) // 2]:+.0f}")
@@ -480,28 +557,29 @@ if __name__ == "__main__":
                 f"measured across mirrored seat assignments to control "
                 f"for positional advantage."
             ),
-            "tom_high":                        args.tom_high,
-            "tom_low":                         args.tom_low,
-            "count":                           len(qualifying_boards),
-            "candidates_attempted":            args.max_search,
-            "stage1_rejected_reachability":    stage1_rejected_reachability,
-            "stage1_rejected_same_goal":       stage1_rejected_same_goal,
-            "stage1_passed":                   len(tasks),
-            "stage2_evaluated":                completed,
+            "tom_high": args.tom_high,
+            "tom_low": args.tom_low,
+            "count": len(qualifying_boards),
+            "candidates_attempted": args.max_search,
+            "stage1_rejected_reachability": stage1_rejected_reachability,
+            "stage1_rejected_same_goal": stage1_rejected_same_goal,
+            "stage1_passed": len(tasks),
+            "stage2_evaluated": completed,
             "stage2_rejected_below_threshold": completed - len(qualifying_boards),
-            "stage2_qualifying":               len(qualifying_boards),
-            "threshold":                       args.threshold,
-            "seed":                            args.seed,
-            "num_workers":                     num_workers,
-            "max_negotiation_rounds":          MAX_NEGOTIATION_ROUNDS,
-            "learning_speed":                  LEARNING_SPEED,
-            "timestamp":                       datetime.now().isoformat(),
+            "stage2_qualifying": len(qualifying_boards),
+            "threshold": args.threshold,
+            "seed": args.seed,
+            "num_workers": num_workers,
+            "max_negotiation_rounds": MAX_NEGOTIATION_ROUNDS,
+            "learning_speed": LEARNING_SPEED,
+            "timestamp": datetime.now().isoformat(),
         },
         "boards": qualifying_boards,
     }
 
-    filename = (f"{label_high}_vs_{label_low}"
-                f"_advantage_mirrored_{int(args.threshold)}.json")
+    filename = (
+        f"{label_high}_vs_{label_low}_advantage_mirrored_{int(args.threshold)}.json"
+    )
     output_path = os.path.join(args.out_dir, filename)
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)
