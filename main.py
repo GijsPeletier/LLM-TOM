@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import random
+from datetime import datetime
 
 from rich.console import Console
 
@@ -93,7 +94,7 @@ def save_checkpoint(filepath, ckpt_data, agents_tuple, shadows_tuple):
 # AGENT SETUP & GAME LOGIC
 
 
-def create_agent(agent_type, player_id, learning_speed=0.8, debug=False):
+def create_agent(agent_type, player_id, learning_speed=0.8, debug=False, verbose=False):
     """Factory pattern for instantiating game agents cleanly."""
     agent_type = agent_type.lower()
 
@@ -147,8 +148,9 @@ def create_agent(agent_type, player_id, learning_speed=0.8, debug=False):
         case "openrouter":
             return OpenRouterAgent(
                 player_id,
-                model_name="openai/gpt-oss-120b:free",
+                model_name="openai/gpt-oss-120b",
                 debug=debug,
+                verbose=verbose,
             )
         case "human":
             return Human(player_id, debug=debug)
@@ -612,8 +614,10 @@ def run_panel_experiment(
     normal_boards_count: int = 5,
     advantage_boards_count: int = 5,
     advantage_threshold: float = 100,
+    advantage_boards_file: str | None = None,
     boards_file: str = "boards_20.json",
     debug: bool = False,
+    verbose: bool = False,
 ):
     """Run a panel experiment: Human vs LLM across 20 games.
 
@@ -651,55 +655,98 @@ def run_panel_experiment(
         return
 
     advantage_boards: list[dict] = []
-    max_search = max(500, advantage_boards_count * 100)
-    print(
-        f"Generating {advantage_boards_count} advantage boards "
-        f"(tom2 vs tom1, threshold={advantage_threshold}, "
-        f"max_search={max_search})..."
-    )
-    for _ in range(max_search):
-        if len(advantage_boards) >= advantage_boards_count:
-            break
-        gen_game = Game_ct()
-        valid = gen_game.init()
-        if valid is False:
-            continue
-        if gen_game.locations[0] == gen_game.locations[1]:
-            continue
-        task = {
-            "board": [row[:] for row in gen_game.board],
-            "chips_p0": gen_game.chips[0][:],
-            "chips_p1": gen_game.chips[1][:],
-            "goal_p0": gen_game.locations[0],
-            "goal_p1": gen_game.locations[1],
-            "tom_low": 1,
-            "tom_high": 2,
-            "threshold": advantage_threshold,
-            "board_index": len(advantage_boards),
-        }
-        result = evaluate_single_board(task)
-        if result is not None:
-            advantage_boards.append(
-                {
-                    "board": result["board"],
-                    "chips1": result["chips1"],
-                    "chips2": result["chips2"],
-                    "location1": result["location1"],
-                    "location2": result["location2"],
-                }
-            )
-            avg_adv = result["advantage"]["avg_self_mirrored"]
+
+    if advantage_boards_file and os.path.exists(advantage_boards_file):
+        print(f"Loading pre-generated advantage boards from {advantage_boards_file}...")
+        try:
+            loaded = load_boards_from_json(advantage_boards_file)
+        except Exception:
+            loaded = []
             print(
-                f"  [{len(advantage_boards)}/{advantage_boards_count}] "
-                f"advantage board (avg_adv={avg_adv:+.0f})"
+                f"  -> Failed to parse {advantage_boards_file}, will generate instead."
+            )
+        if len(loaded) >= advantage_boards_count:
+            advantage_boards = loaded[:advantage_boards_count]
+            print(
+                f"  -> Loaded {len(advantage_boards)}/{advantage_boards_count} boards."
+            )
+        else:
+            print(
+                f"  -> Only {len(loaded)} boards in file (need "
+                f"{advantage_boards_count}); will generate instead."
             )
 
-    if len(advantage_boards) < advantage_boards_count:
+    if not advantage_boards:
+        max_search = max(500, advantage_boards_count * 100)
         print(
-            f"Warning: only found {len(advantage_boards)}/{advantage_boards_count} "
-            f"advantage boards after {max_search} attempts"
+            f"Generating {advantage_boards_count} advantage boards "
+            f"(tom2 vs tom1, threshold={advantage_threshold}, "
+            f"max_search={max_search})..."
         )
-        advantage_boards_count = len(advantage_boards)
+        for _ in range(max_search):
+            if len(advantage_boards) >= advantage_boards_count:
+                break
+            gen_game = Game_ct()
+            valid = gen_game.init()
+            if valid is False:
+                continue
+            if gen_game.locations[0] == gen_game.locations[1]:
+                continue
+            task = {
+                "board": [row[:] for row in gen_game.board],
+                "chips_p0": gen_game.chips[0][:],
+                "chips_p1": gen_game.chips[1][:],
+                "goal_p0": gen_game.locations[0],
+                "goal_p1": gen_game.locations[1],
+                "tom_low": 1,
+                "tom_high": 2,
+                "threshold": advantage_threshold,
+                "board_index": len(advantage_boards),
+            }
+            result = evaluate_single_board(task)
+            if result is not None:
+                advantage_boards.append(
+                    {
+                        "board": result["board"],
+                        "chips1": result["chips1"],
+                        "chips2": result["chips2"],
+                        "location1": result["location1"],
+                        "location2": result["location2"],
+                    }
+                )
+                avg_adv = result["advantage"]["avg_self_mirrored"]
+                print(
+                    f"  [{len(advantage_boards)}/{advantage_boards_count}] "
+                    f"advantage board (avg_adv={avg_adv:+.0f})"
+                )
+
+        if len(advantage_boards) < advantage_boards_count:
+            print(
+                f"Warning: only found {len(advantage_boards)}/{advantage_boards_count} "
+                f"advantage boards after {max_search} attempts"
+            )
+            advantage_boards_count = len(advantage_boards)
+
+        if advantage_boards and advantage_boards_file:
+            os.makedirs(os.path.dirname(advantage_boards_file) or ".", exist_ok=True)
+            output = {
+                "metadata": {
+                    "description": (
+                        f"Advantage boards where ToM-2 outperforms ToM-1 "
+                        f"by >= {advantage_threshold} avg utility."
+                    ),
+                    "tom_high": 2,
+                    "tom_low": 1,
+                    "count": len(advantage_boards),
+                    "threshold": advantage_threshold,
+                    "seed": seed,
+                    "timestamp": datetime.now().isoformat(),
+                },
+                "boards": advantage_boards,
+            }
+            with open(advantage_boards_file, "w") as f:
+                json.dump(output, f, indent=2)
+            print(f"  -> Saved to {advantage_boards_file}")
 
     board_pairs = [(b, "normal") for b in normal_boards] + [
         (b, "advantage") for b in advantage_boards
@@ -739,8 +786,8 @@ def run_panel_experiment(
 
     human_p0 = Human(0, debug=debug)
     human_p1 = Human(1, debug=debug)
-    llm_p0 = create_agent(llm_type, 0, debug=debug)
-    llm_p1 = create_agent(llm_type, 1, debug=debug)
+    llm_p0 = create_agent(llm_type, 0, debug=debug, verbose=verbose)
+    llm_p1 = create_agent(llm_type, 1, debug=debug, verbose=verbose)
 
     output_dir = os.path.join("results", "panel_results", llm_type, f"seed_{seed}")
     os.makedirs(output_dir, exist_ok=True)
@@ -768,7 +815,7 @@ def run_panel_experiment(
             agent_init, agent_resp = human_p0, llm_p1
             human_is_p0 = True
         else:
-            agent_init, agent_resp = llm_p0, human_p1
+            agent_init, agent_resp = human_p1, llm_p0
             human_is_p0 = False
 
         decept_label = "dec" if deception_val else "nodec"
@@ -869,13 +916,21 @@ def main(args):
     # -----------------------
 
     # Initialize Agents (Config 1 & Config 2)
-    p0_c1 = create_agent(args.player_0, 0, args.learning_speed, args.debug)
-    p1_c1 = create_agent(args.player_1, 1, args.learning_speed, args.debug)
+    p0_c1 = create_agent(
+        args.player_0, 0, args.learning_speed, args.debug, args.verbose
+    )
+    p1_c1 = create_agent(
+        args.player_1, 1, args.learning_speed, args.debug, args.verbose
+    )
     # shadows_c1 = {f"tom{i}": ShadowAgent(i, 0) for i in range(3)} | {"random": RandomShadowAgent(0)}
     shadows_c1 = {}  # Run without shadow agent tracking
 
-    p0_c2 = create_agent(args.player_1, 0, args.learning_speed, args.debug)
-    p1_c2 = create_agent(args.player_0, 1, args.learning_speed, args.debug)
+    p0_c2 = create_agent(
+        args.player_1, 0, args.learning_speed, args.debug, args.verbose
+    )
+    p1_c2 = create_agent(
+        args.player_0, 1, args.learning_speed, args.debug, args.verbose
+    )
     # shadows_c2 = {f"tom{i}": ShadowAgent(i, 0) for i in range(3)} | {"random": RandomShadowAgent(0)}
     shadows_c2 = {}  # Run without shadow agent tracking
 
@@ -1225,6 +1280,21 @@ if __name__ == "__main__":
         type=float,
         default=100,
     )
+    parser.add_argument(
+        "--advantage-boards-file",
+        type=str,
+        default="board_generation/tom2_vs_tom1_advantage_mirrored_100.json",
+        help="JSON file with pre-generated advantage boards. "
+        "If it exists and has enough boards, "
+        "they are loaded instead of being generated on-the-fly. "
+        "When missing, boards are generated and saved to this path.",
+    )
+    parser.add_argument(
+        "--verbose",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Print retry attempts and token counts for OpenRouter agent.",
+    )
     cli_args = parser.parse_args()
 
     if cli_args.panel:
@@ -1234,8 +1304,10 @@ if __name__ == "__main__":
             normal_boards_count=cli_args.normal_boards_count,
             advantage_boards_count=cli_args.advantage_boards_count,
             advantage_threshold=cli_args.advantage_threshold,
+            advantage_boards_file=cli_args.advantage_boards_file,
             boards_file=cli_args.boards_file,
             debug=cli_args.debug,
+            verbose=cli_args.verbose,
         )
     else:
         if not cli_args.player_0 or not cli_args.player_1:

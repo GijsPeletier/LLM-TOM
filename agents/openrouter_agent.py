@@ -19,9 +19,10 @@ class OpenRouterAgent(BaseLLMAgent):
     def __init__(
         self,
         player_id,
-        model_name="openai/gpt-oss-120b:free",
+        model_name="openai/gpt-oss-120b",
         api_key=None,
         debug=False,
+        verbose=False,
         **kwargs,
     ):
         super().__init__(player_id, debug=debug)
@@ -34,6 +35,7 @@ class OpenRouterAgent(BaseLLMAgent):
             )
 
         self.model_name = model_name
+        self.verbose = verbose
         self.client = openai.OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=api_key,
@@ -46,7 +48,7 @@ class OpenRouterAgent(BaseLLMAgent):
     def _generate_llm_response(self, prompt):
         for attempt in Retrying(
             wait=wait_exponential(multiplier=2, min=2, max=1024),
-            stop=stop_after_attempt(10),
+            stop=stop_after_attempt(6),
             retry=retry_if_exception_type(
                 (
                     openai.APIError,
@@ -58,9 +60,25 @@ class OpenRouterAgent(BaseLLMAgent):
             ),
         ):
             with attempt:
+                if self.verbose and attempt.retry_state.outcome is not None:
+                    print(
+                        f"[P{self.player_id} OpenRouter] "
+                        f"Retry {attempt.retry_state.attempt_number - 1}/10 "
+                        f"(waited {attempt.retry_state.idle_for:.1f}s) "
+                        f"after: {attempt.retry_state.outcome.exception()}"
+                    )
                 response = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
                 )
+                if self.verbose:
+                    u = response.usage
+                    if u:
+                        print(
+                            f"[P{self.player_id} OpenRouter] "
+                            f"Tokens: prompt={u.prompt_tokens} "
+                            f"completion={u.completion_tokens} "
+                            f"total={u.total_tokens}"
+                        )
                 return response.choices[0].message.content
