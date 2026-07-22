@@ -297,16 +297,25 @@ def run_single_game(
                 shadow_agents, current_player, incoming_offer, offer, game, game_evs
             )
 
-        if offer == game.chip_sets[current_player]:
+        if message.action == "withdraw":
             print("  -> WITHDREW")
             break
-
-        if rounds > 0 and offer == incoming_offer:
+        elif message.action == "accept":
             agreement_reached = True
             final_chips[current_player] = offer
             final_chips[1 - current_player] = game.flip_array[offer]
             print("  -> ACCEPTED")
             break
+        else:
+            if offer == game.chip_sets[current_player]:
+                print("  -> WITHDREW")
+                break
+            if rounds > 0 and offer == incoming_offer:
+                agreement_reached = True
+                final_chips[current_player] = offer
+                final_chips[1 - current_player] = game.flip_array[offer]
+                print("  -> ACCEPTED")
+                break
 
         print(f"  -> Offers: {offer} {Game_ct.convert_code(offer, game.bin_max)}")
         incoming_offer = game.flip_array[offer]
@@ -325,6 +334,8 @@ def run_single_game(
     if history is not None:
         if agreement_reached:
             result = "accepted"
+        elif message.action == "withdraw":
+            result = "withdrawn"
         elif offer == game.chip_sets[0] or offer == game.chip_sets[1]:
             result = "withdrawn"
         else:
@@ -383,15 +394,16 @@ def run_single_human_game(
         if deception is not None and hasattr(a, "deception"):
             a.deception = deception
 
-    for i, role in enumerate(["Initiator", "Responder"]):
-        if i == 1:
-            print(
-                f"P{i} ({role}): Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
-            )
-        else:
-            print(
-                f"P{i} ({role}): Goal {game.locations[i]}, Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
-            )
+    init_id = agent_init.player_id
+    resp_id = agent_resp.player_id
+    print(
+        f"P{init_id} (Initiator): Chips {Game_ct.convert_code(game.chip_sets[init_id], game.bin_max)}, "
+        f"Starting utility: {u_init[init_id]}"
+    )
+    print(
+        f"P{resp_id} (Responder): Chips {Game_ct.convert_code(game.chip_sets[resp_id], game.bin_max)}, "
+        f"Starting utility: {u_init[resp_id]}"
+    )
 
     header = " " * 12 + "   ".join(
         f"{c:>7}" for c in ["White", "Black", "Magenta", "Gray", "Yellow"]
@@ -457,8 +469,13 @@ def run_single_human_game(
         chat = message.message
         if message.action == "withdraw":
             console.print(f"[bold]P{current_player}[/bold] [red]withdraws[/red]")
+            break
         elif message.action == "accept":
             console.print(f"[bold]P{current_player}[/bold] [green]accepts[/green]")
+            agreement_reached = True
+            final_chips[current_player] = offer
+            final_chips[1 - current_player] = game.flip_array[offer]
+            break
         else:
             nums = "   ".join(f"{n:>7}" for n in offer_vec)
             suffix = f'  — "{chat}"' if chat else ""
@@ -466,14 +483,14 @@ def run_single_human_game(
                 f"[bold]P{current_player}[/bold] [cyan]proposes[/cyan] {nums}{suffix}"
             )
 
-        if offer == game.chip_sets[current_player]:
-            break
+            if offer == game.chip_sets[current_player]:
+                break
 
-        if rounds > 0 and offer == incoming_offer:
-            agreement_reached = True
-            final_chips[current_player] = offer
-            final_chips[1 - current_player] = game.flip_array[offer]
-            break
+            if rounds > 0 and offer == incoming_offer:
+                agreement_reached = True
+                final_chips[current_player] = offer
+                final_chips[1 - current_player] = game.flip_array[offer]
+                break
 
         incoming_offer = game.flip_array[offer]
         current_player = 1 - current_player
@@ -491,6 +508,8 @@ def run_single_human_game(
     if history is not None:
         if agreement_reached:
             result = "accepted"
+        elif message.action == "withdraw":
+            result = "withdrawn"
         elif offer == game.chip_sets[0] or offer == game.chip_sets[1]:
             result = "withdrawn"
         else:

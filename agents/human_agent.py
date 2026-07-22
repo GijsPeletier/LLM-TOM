@@ -332,6 +332,15 @@ class Human:
             raise KeyboardInterrupt
 
         offer_code = Game_ct.convert_chips(self.offer, self.game.bin_max)
+        own_chips_vec = Game_ct.convert_code(
+            self.game.chip_sets[self.player_id], self.game.bin_max
+        )
+        if self.offer == own_chips_vec:
+            action = "withdraw"
+        elif not self.initial_offer and self.offer == self.received_offer:
+            action = "accept"
+        else:
+            action = "propose"
         chat_message = self.outgoing_message.strip() or None
         if chat_message:
             self.chat_log.append(
@@ -347,7 +356,7 @@ class Human:
             round=round_idx,
             player_id=self.player_id,
             role=role,
-            action="propose",
+            action=action,
             offer=list(self.offer),
             message=chat_message,
             reasoning=None,
