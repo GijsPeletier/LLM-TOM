@@ -31,6 +31,9 @@ from results.analysis import run_analysis_pipeline
 from dotmap import DotMap
 
 
+SHOW_STARTING_UTILITY = False
+
+
 # FILE IO & CHECKPOINT HELPERS
 
 
@@ -228,13 +231,12 @@ def run_single_game(
         print(str(row))
     for i, role in enumerate(["Initiator", "Responder"]):
         if hide_opponent_goal and i == 1:
-            print(
-                f"P{i} ({role}): Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
-            )
+            line = f"P{i} ({role}): Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}"
         else:
-            print(
-                f"P{i} ({role}): Goal {game.locations[i]}, Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}, Starting utility: {u_init[i]}"
-            )
+            line = f"P{i} ({role}): Goal {game.locations[i]}, Chips {Game_ct.convert_code(game.chip_sets[i], game.bin_max)}"
+        if SHOW_STARTING_UTILITY:
+            line += f", Starting utility: {u_init[i]}"
+        print(line)
 
     current_player, incoming_offer = 0, None
     incoming_message: str | None = None
@@ -396,14 +398,16 @@ def run_single_human_game(
 
     init_id = agent_init.player_id
     resp_id = agent_resp.player_id
-    print(
-        f"P{init_id} (Initiator): Chips {Game_ct.convert_code(game.chip_sets[init_id], game.bin_max)}, "
-        f"Starting utility: {u_init[init_id]}"
+    init_line = (
+        f"P{init_id} (Initiator): Chips {Game_ct.convert_code(game.chip_sets[init_id], game.bin_max)}"
+        + (f", Starting utility: {u_init[init_id]}" if SHOW_STARTING_UTILITY else "")
     )
-    print(
-        f"P{resp_id} (Responder): Chips {Game_ct.convert_code(game.chip_sets[resp_id], game.bin_max)}, "
-        f"Starting utility: {u_init[resp_id]}"
+    resp_line = (
+        f"P{resp_id} (Responder): Chips {Game_ct.convert_code(game.chip_sets[resp_id], game.bin_max)}"
+        + (f", Starting utility: {u_init[resp_id]}" if SHOW_STARTING_UTILITY else "")
     )
+    print(init_line)
+    print(resp_line)
 
     header = " " * 12 + "   ".join(
         f"{c:>7}" for c in ["White", "Black", "Magenta", "Gray", "Yellow"]
