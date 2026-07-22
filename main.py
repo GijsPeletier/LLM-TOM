@@ -646,7 +646,7 @@ def run_panel_experiment(
     normal_boards = normal_boards[:normal_boards_count]
 
     try:
-        from board_generation.find_utility_advantage import evaluate_single_board
+        from board_generation.find_utility_advantage import find_advantage_boards
     except ImportError:
         print(
             "Error: cannot import board_generation.find_utility_advantage."
@@ -677,55 +677,27 @@ def run_panel_experiment(
             )
 
     if not advantage_boards:
-        max_search = max(500, advantage_boards_count * 100)
-        print(
-            f"Generating {advantage_boards_count} advantage boards "
-            f"(tom2 vs tom1, threshold={advantage_threshold}, "
-            f"max_search={max_search})..."
+        advantage_boards = find_advantage_boards(
+            tom_low=1,
+            tom_high=2,
+            threshold=advantage_threshold,
+            target=advantage_boards_count,
+            max_search=max(500, advantage_boards_count * 100),
+            seed=seed,
+            quiet=True,
         )
-        for _ in range(max_search):
-            if len(advantage_boards) >= advantage_boards_count:
-                break
-            gen_game = Game_ct()
-            valid = gen_game.init()
-            if valid is False:
-                continue
-            if gen_game.locations[0] == gen_game.locations[1]:
-                continue
-            task = {
-                "board": [row[:] for row in gen_game.board],
-                "chips_p0": gen_game.chips[0][:],
-                "chips_p1": gen_game.chips[1][:],
-                "goal_p0": gen_game.locations[0],
-                "goal_p1": gen_game.locations[1],
-                "tom_low": 1,
-                "tom_high": 2,
-                "threshold": advantage_threshold,
-                "board_index": len(advantage_boards),
-            }
-            result = evaluate_single_board(task)
-            if result is not None:
-                advantage_boards.append(
-                    {
-                        "board": result["board"],
-                        "chips1": result["chips1"],
-                        "chips2": result["chips2"],
-                        "location1": result["location1"],
-                        "location2": result["location2"],
-                    }
-                )
-                avg_adv = result["advantage"]["avg_self_mirrored"]
-                print(
-                    f"  [{len(advantage_boards)}/{advantage_boards_count}] "
-                    f"advantage board (avg_adv={avg_adv:+.0f})"
-                )
 
-        if len(advantage_boards) < advantage_boards_count:
-            print(
-                f"Warning: only found {len(advantage_boards)}/{advantage_boards_count} "
-                f"advantage boards after {max_search} attempts"
-            )
-            advantage_boards_count = len(advantage_boards)
+        advantage_boards = [
+            {
+                "board": b["board"],
+                "chips1": b["chips1"],
+                "chips2": b["chips2"],
+                "location1": b["location1"],
+                "location2": b["location2"],
+            }
+            for b in advantage_boards
+        ]
+        advantage_boards_count = len(advantage_boards)
 
         if advantage_boards and advantage_boards_file:
             os.makedirs(os.path.dirname(advantage_boards_file) or ".", exist_ok=True)
@@ -792,24 +764,31 @@ def run_panel_experiment(
     output_dir = os.path.join("results", "panel_results", llm_type, f"seed_{seed}")
     os.makedirs(output_dir, exist_ok=True)
 
+    boards_used_path = os.path.join(output_dir, "boards_used.json")
+    with open(boards_used_path, "w") as f:
+        json.dump(
+            {
+                "normal": normal_boards,
+                "advantage": advantage_boards,
+                "schedule": schedule,
+            },
+            f,
+            indent=2,
+        )
+    print(
+        f"Saved {len(normal_boards)} normal + {len(advantage_boards)} advantage "
+        f"base boards + {len(schedule)} full board configs to {boards_used_path}\n"
+    )
+
     deltas_human: list[float] = []
     deltas_llm: list[float] = []
     results_by_cell: dict[tuple, list[float]] = {}
     game = Game_ct()
-
     for game_idx, entry in enumerate(schedule):
         board_data = entry["board"]
         deception_val = entry["deception"]
         config = entry["config"]
         board_type = entry["board_type"]
-
-        game.load_setting(
-            board_data["board"],
-            board_data["chips1"],
-            board_data["chips2"],
-            board_data["location1"],
-            board_data["location2"],
-        )
 
         if config == "config1":
             agent_init, agent_resp = human_p0, llm_p1
@@ -819,9 +798,39 @@ def run_panel_experiment(
             human_is_p0 = False
 
         decept_label = "dec" if deception_val else "nodec"
-        print(
-            f"\n========== Game {game_idx + 1}/{len(schedule)} | "
-            f"{board_type} | {decept_label} | {config} =========="
+        print(f"\n========== Game {game_idx + 1}/{len(schedule)} ==========")
+
+        label = f"{board_type}_{decept_label}_{config}"
+        path = os.path.join(output_dir, f"game_{game_idx + 1}_{label}.json")
+
+        if os.path.exists(path):
+            print("  -> Game already completed; loading deltas from existing result")
+            try:
+                existing = GameHistory.load(path)
+                if existing.outcome is not None and "deltas" in existing.outcome:
+                    delta_0 = existing.outcome.deltas[0]
+                    delta_1 = existing.outcome.deltas[1]
+                    if human_is_p0:
+                        human_delta, llm_delta = delta_0, delta_1
+                    else:
+                        llm_delta, human_delta = delta_0, delta_1
+                    deltas_human.append(human_delta)
+                    deltas_llm.append(llm_delta)
+                    cell_key = (deception_val, board_type)
+                    results_by_cell.setdefault(cell_key, []).append(human_delta)
+                    continue
+                else:
+                    raise ValueError("missing deltas in outcome")
+            except Exception as e:
+                print(f"  -> Corrupt result file ({e}); re-playing game")
+                os.remove(path)
+
+        game.load_setting(
+            board_data["board"],
+            board_data["chips1"],
+            board_data["chips2"],
+            board_data["location1"],
+            board_data["location2"],
         )
 
         history = GameHistory.from_game(
@@ -842,13 +851,11 @@ def run_panel_experiment(
             deception=deception_val,
         )
 
-        label = f"{board_type}_{decept_label}_{config}"
-        path = os.path.join(output_dir, f"game_{game_idx + 1}_{label}.json")
-        history.save(path)
-
         if result is None:
-            print("  -> Error, skipping")
+            print("  -> Error, skipping — game not saved (re-run to retry)")
             continue
+
+        history.save(path)
 
         delta_0, delta_1, _, _ = result
         if human_is_p0:
@@ -1231,17 +1238,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Colored Trails.")
     parser.add_argument(
         "--panel",
-        type=str,
-        default=None,
-        metavar="LLM_TYPE",
-        help="Run panel experiment (Human vs LLM) instead of a tournament.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Run panel experiment (Human vs LLM). Use --no-panel for tournament mode.",
     )
     parser.add_argument(
         "player_0",
         type=str,
         nargs="?",
         default=None,
-        help="First player (tournament mode).",
+        help="LLM type in panel mode (e.g. claude, qwen); first player in tournament mode.",
     )
     parser.add_argument(
         "player_1",
@@ -1298,8 +1304,10 @@ if __name__ == "__main__":
     cli_args = parser.parse_args()
 
     if cli_args.panel:
+        if not cli_args.player_0:
+            parser.error("player_0 (LLM type) is required in panel mode")
         run_panel_experiment(
-            cli_args.panel,
+            cli_args.player_0,
             seed=cli_args.seed,
             normal_boards_count=cli_args.normal_boards_count,
             advantage_boards_count=cli_args.advantage_boards_count,
@@ -1311,5 +1319,5 @@ if __name__ == "__main__":
         )
     else:
         if not cli_args.player_0 or not cli_args.player_1:
-            parser.error("player_0 and player_1 are required when not using --panel")
+            parser.error("player_0 and player_1 are required in tournament mode")
         main(cli_args)
