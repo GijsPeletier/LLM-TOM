@@ -31,7 +31,7 @@ from results.analysis import run_analysis_pipeline
 from dotmap import DotMap
 
 
-SHOW_STARTING_UTILITY = False
+SHOW_STARTING_UTILITY = True
 
 
 # FILE IO & CHECKPOINT HELPERS
