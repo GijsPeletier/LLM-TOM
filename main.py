@@ -31,7 +31,7 @@ from results.analysis import run_analysis_pipeline
 from dotmap import DotMap
 
 
-SHOW_STARTING_UTILITY = True
+SHOW_STARTING_UTILITY = False
 
 
 # FILE IO & CHECKPOINT HELPERS
@@ -472,28 +472,32 @@ def run_single_human_game(
         offer_vec = Game_ct.convert_code(offer, game.bin_max)
         chat = message.message
         if message.action == "withdraw":
-            console.print(f"[bold]P{current_player}[/bold] [red]withdraws[/red]")
+            console.print(
+                f"[bold]P{active_agent.player_id}[/bold] [red]withdraws[/red]"
+            )
             break
         elif message.action == "accept":
-            console.print(f"[bold]P{current_player}[/bold] [green]accepts[/green]")
+            console.print(
+                f"[bold]P{active_agent.player_id}[/bold] [green]accepts[/green]"
+            )
             agreement_reached = True
-            final_chips[current_player] = offer
-            final_chips[1 - current_player] = game.flip_array[offer]
+            final_chips[active_agent.player_id] = offer
+            final_chips[1 - active_agent.player_id] = game.flip_array[offer]
             break
         else:
             nums = "   ".join(f"{n:>7}" for n in offer_vec)
             suffix = f'  — "{chat}"' if chat else ""
             console.print(
-                f"[bold]P{current_player}[/bold] [cyan]proposes[/cyan] {nums}{suffix}"
+                f"[bold]P{active_agent.player_id}[/bold] [cyan]proposes[/cyan] {nums}{suffix}"
             )
 
-            if offer == game.chip_sets[current_player]:
+            if offer == game.chip_sets[active_agent.player_id]:
                 break
 
             if rounds > 0 and offer == incoming_offer:
                 agreement_reached = True
-                final_chips[current_player] = offer
-                final_chips[1 - current_player] = game.flip_array[offer]
+                final_chips[active_agent.player_id] = offer
+                final_chips[1 - active_agent.player_id] = game.flip_array[offer]
                 break
 
         incoming_offer = game.flip_array[offer]
