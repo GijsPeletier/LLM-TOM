@@ -71,6 +71,7 @@ class OpenRouterAgent(BaseLLMAgent):
                     model=self.model_name,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.0,
+                    extra_body={"provider": {"quantizations": ["fp4"]}},
                 )
                 if self.verbose:
                     u = response.usage
