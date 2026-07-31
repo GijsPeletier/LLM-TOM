@@ -87,7 +87,7 @@
       ],
       "message": "i need exactly these coins otherwise i cannot reach my goal, so please give me some here",
       "reasoning": null,
-      "thoughts": "idk - no idea, also i am bluffing and trying to get more maybe to see my possibilities later onwards",
+      "thoughts": "? - no idea, also i am bluffing and trying to get more maybe to see my possibilities later onwards",
       "raw_response": null,
       "prompt": null
     },
@@ -123,7 +123,7 @@
       ],
       "message": "okay i will readjust my route for you, i need 2 black one yellow and one grey one to finish in this case. otherwise i wont get there. i am not interested in extra coins for points, so you can use thos",
       "reasoning": null,
-      "thoughts": "i forgot to look at the coordinates - i am playing open card, hopefully honesty = key",
+      "thoughts": "? - i forgot to look at the coordinates, i am playing open card, hopefully honesty = key",
       "raw_response": null,
       "prompt": null
     },
