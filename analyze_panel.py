@@ -9,6 +9,10 @@ import json
 import sys
 from pathlib import Path
 
+# the goal is always at least 3 squares away. The minimum reward for reaching
+# the goal is therefore 3 * 100 + 500 = 800
+MIN_GOAL_REW = 800
+
 
 def _game_number(path: Path) -> int:
     return int(path.stem.split("_")[1])
@@ -53,8 +57,8 @@ def summarize(results_dir: Path) -> None:
         human_deltas.append(human_delta)
         llm_deltas.append(llm_delta)
 
-        human_reached = final_utils[human_idx] >= 800
-        llm_reached = final_utils[llm_idx] >= 800
+        human_reached = final_utils[human_idx] >= MIN_GOAL_REW - outcome["rounds"]
+        llm_reached = final_utils[llm_idx] >= MIN_GOAL_REW - outcome["rounds"]
 
         filename = Path(g["meta"].get("_file", "")).name
         per_game.append(
