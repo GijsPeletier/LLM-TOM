@@ -1,0 +1,130 @@
+{
+  "board": {
+    "grid": [
+      [
+        3,
+        1,
+        0,
+        2,
+        4
+      ],
+      [
+        4,
+        2,
+        0,
+        1,
+        2
+      ],
+      [
+        1,
+        1,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        1,
+        3,
+        4,
+        0
+      ],
+      [
+        3,
+        3,
+        4,
+        1,
+        3
+      ]
+    ],
+    "total_chips": [
+      1,
+      3,
+      0,
+      2,
+      2
+    ]
+  },
+  "players": [
+    {
+      "type": "openrouter",
+      "initial_chips": [
+        1,
+        1,
+        0,
+        2,
+        0
+      ],
+      "goal": 11,
+      "initial_utility": 300
+    },
+    {
+      "type": "human",
+      "initial_chips": [
+        0,
+        2,
+        0,
+        0,
+        2
+      ],
+      "goal": 8,
+      "initial_utility": 300
+    }
+  ],
+  "initiator": 1,
+  "messages": [
+    {
+      "round": 0,
+      "player_id": 1,
+      "role": "initiating",
+      "action": "withdraw",
+      "offer": [
+        0,
+        2,
+        0,
+        0,
+        2
+      ],
+      "message": "i like my chips and do not want to trade with you",
+      "reasoning": null,
+      "thoughts": "testing if the llm will overcompensate due to my inital message of happiness with my current chips",
+      "raw_response": null,
+      "prompt": null
+    }
+  ],
+  "outcome": {
+    "result": "withdrawn",
+    "rounds": 1,
+    "agreement": false,
+    "cost": 1,
+    "final_chips": [
+      [
+        1,
+        1,
+        0,
+        2,
+        0
+      ],
+      [
+        0,
+        2,
+        0,
+        0,
+        2
+      ]
+    ],
+    "final_utilities": [
+      299,
+      299
+    ],
+    "deltas": [
+      -1,
+      -1
+    ]
+  },
+  "meta": {
+    "board_index": 2,
+    "config": "config2",
+    "negotiation_cost": 1
+  }
+}
