@@ -265,10 +265,17 @@ def _print_summary(all_games: list[dict]) -> None:
 def _build_turn_plot(all_games: list[dict], output_path: str) -> None:
     games_ok = [g for g in all_games if g["llm_reached"] is not None]
     turn_max = max((g["turns"] for g in games_ok), default=4)
-    turns = sorted(set(range(1, turn_max + 1)))
+    turns = list(range(1, min(turn_max, 6) + 1))
+    if turn_max >= 7:
+        turns.append(7)
     loss_rates: list[float] = []
+    turn_counts: list[int] = []
     for t in turns:
-        at_turn = [g for g in games_ok if g["turns"] == t]
+        if t < 7:
+            at_turn = [g for g in games_ok if g["turns"] == t]
+        else:
+            at_turn = [g for g in games_ok if g["turns"] >= 7]
+        turn_counts.append(len(at_turn))
         if not at_turn:
             loss_rates.append(0.0)
         else:
@@ -282,10 +289,10 @@ def _build_turn_plot(all_games: list[dict], output_path: str) -> None:
     ax.set_ylabel("LLM Loss Rate")
     ax.set_title("LLM Loss Rate by Game Length (Turns)")
     ax.set_xticks(turns)
+    ax.set_xticklabels([str(t) if t < 7 else "7+" for t in turns])
     ax.set_ylim(0, 1)
 
-    for bar, rate, t in zip(bars, loss_rates, turns):
-        count = sum(1 for g in games_ok if g["turns"] == t)
+    for bar, rate, count in zip(bars, loss_rates, turn_counts):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + 0.02,
