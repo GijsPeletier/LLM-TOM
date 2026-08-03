@@ -13,6 +13,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+
 VALID_GOAL_COORDS = [
     (0, 0),
     (0, 1),
@@ -179,6 +180,12 @@ def _load_all_games(base_dir: Path, seeds: list[int] | None = None) -> list[dict
     return all_games
 
 
+def _emit(*args, file=None, **kwargs):
+    print(*args, **kwargs)
+    if file is not None:
+        print(*args, file=file, **kwargs)
+
+
 def _category_breakdown(games: list[dict]) -> list[tuple[int, int, float]]:
     total = len(games)
     if total == 0:
@@ -199,59 +206,68 @@ def _goal_accuracy(games: list[dict]) -> float:
     return sum(1 for g in games if g["goal_correct"]) / len(games) * 100
 
 
-def _print_category_table(title: str, games: list[dict]) -> None:
-    print(f"\n  {title}")
+def _print_category_table(title: str, games: list[dict], file=None) -> None:
+    _emit(f"\n  {title}", file=file)
     breakdown = _category_breakdown(games)
-    print(f"{'':>28} {'Count':>6} {'%':>8}")
-    print(f"  {'-' * 40}")
+    _emit(f"{'':>28} {'Count':>6} {'%':>8}", file=file)
+    _emit(f"  {'-' * 40}", file=file)
     for cat, count, pct in breakdown:
         label = WIN_CATEGORIES[cat]
-        print(f"  {label:>26}  {count:>5}  {pct:>5.1f}%")
+        _emit(f"  {label:>26}  {count:>5}  {pct:>5.1f}%", file=file)
     total = len(games)
-    print(f"  {'Total':>26}  {total:>5}")
+    _emit(f"  {'Total':>26}  {total:>5}", file=file)
     llm_wr = _win_rate_llm(games)
-    print(
-        f"  LLM reached goal: {llm_wr:.1f}% ({sum(1 for g in games if g['llm_reached'])}/{total})"
+    _emit(
+        f"  LLM reached goal: {llm_wr:.1f}% ({sum(1 for g in games if g['llm_reached'])}/{total})",
+        file=file,
     )
     acc = _goal_accuracy(games)
-    print(
-        f"  Goal est. correct: {acc:.1f}% ({sum(1 for g in games if g['goal_correct'])}/{total})"
+    _emit(
+        f"  Goal est. correct: {acc:.1f}% ({sum(1 for g in games if g['goal_correct'])}/{total})",
+        file=file,
     )
 
 
-def _print_summary(all_games: list[dict]) -> None:
+def _print_summary(all_games: list[dict], file=None) -> None:
     seeds = sorted(set(g["seed"] for g in all_games))
 
-    print("=" * 45)
-    print(f"  PANEL ANALYSIS — {len(all_games)} games across {len(seeds)} seeds")
-    print("=" * 45)
+    _emit("=" * 45, file=file)
+    _emit(
+        f"  PANEL ANALYSIS — {len(all_games)} games across {len(seeds)} seeds",
+        file=file,
+    )
+    _emit("=" * 45, file=file)
 
-    _print_category_table("OVERALL", all_games)
+    _print_category_table("OVERALL", all_games, file=file)
 
-    print(f"\n\n\n{'=' * 45}")
-    print(" " * 18, "PER SEED")
-    print("=" * 45)
+    _emit(f"\n\n\n{'=' * 45}", file=file)
+    _emit(" " * 18 + "PER SEED", file=file)
+    _emit("=" * 45, file=file)
     for seed in seeds:
         seed_games = [g for g in all_games if g["seed"] == seed]
-        _print_category_table(f"Seed {seed} ({len(seed_games)} games)", seed_games)
+        _print_category_table(
+            f"Seed {seed} ({len(seed_games)} games)", seed_games, file=file
+        )
 
-    print(f"\n\n\n{'=' * 45}")
-    print(" " * 9, "DECEPTION vs NON-DECEPTION")
-    print("=" * 45)
+    _emit(f"\n\n\n{'=' * 45}", file=file)
+    _emit(" " * 9 + "DECEPTION vs NON-DECEPTION", file=file)
+    _emit("=" * 45, file=file)
     for label, dec_val in [("DECEPTION ON", True), ("DECEPTION OFF", False)]:
         subset = [g for g in all_games if g["deception"] == dec_val]
-        _print_category_table(f"{label} ({len(subset)} games)", subset)
+        _print_category_table(f"{label} ({len(subset)} games)", subset, file=file)
 
-    print(f"\n\n\n{'=' * 45}")
-    print(" " * 9, "NORMAL vs ADVANTAGE BOARDS")
-    print("=" * 45)
+    _emit(f"\n\n\n{'=' * 45}", file=file)
+    _emit(" " * 9 + "NORMAL vs ADVANTAGE BOARDS", file=file)
+    _emit("=" * 45, file=file)
     for btype in ("normal", "advantage"):
         subset = [g for g in all_games if g["board_type"] == btype]
-        _print_category_table(f"{btype.upper()} ({len(subset)} games)", subset)
+        _print_category_table(
+            f"{btype.upper()} ({len(subset)} games)", subset, file=file
+        )
 
-    print(f"\n\n\n{'=' * 45}")
-    print(" " * 10, "DECEPTION x BOARD TYPE")
-    print("=" * 45)
+    _emit(f"\n\n\n{'=' * 45}", file=file)
+    _emit(" " * 10 + "DECEPTION x BOARD TYPE", file=file)
+    _emit("=" * 45, file=file)
     for btype in ("normal", "advantage"):
         for label, dec_val in [("dec", True), ("nodec", False)]:
             subset = [
@@ -259,10 +275,12 @@ def _print_summary(all_games: list[dict]) -> None:
                 for g in all_games
                 if g["board_type"] == btype and g["deception"] == dec_val
             ]
-            _print_category_table(f"{btype} / {label} ({len(subset)} games)", subset)
+            _print_category_table(
+                f"{btype} / {label} ({len(subset)} games)", subset, file=file
+            )
 
 
-def _build_turn_plot(all_games: list[dict], output_path: str) -> None:
+def _build_turn_plot(all_games: list[dict], output_path: str, file=None) -> None:
     games_ok = [g for g in all_games if g["llm_reached"] is not None]
     turn_max = max((g["turns"] for g in games_ok), default=4)
     turns = list(range(1, min(turn_max, 6) + 1))
@@ -303,8 +321,8 @@ def _build_turn_plot(all_games: list[dict], output_path: str) -> None:
         )
 
     fig.tight_layout()
-    fig.savefig(output_path, dpi=150)
-    print(f"\nSaved bar plot to {output_path}")
+    fig.savefig(output_path, format="pdf")
+    _emit(f"\nSaved bar plot to {output_path}", file=file)
 
 
 def main() -> None:
@@ -328,16 +346,23 @@ def main() -> None:
         print(f"Not a directory: {results_dir}")
         sys.exit(1)
 
+    report_path = results_dir / "panel_analysis_report.txt"
+    report_file = open(report_path, "w", encoding="utf-8")
+
     print(f"Loading games from {results_dir} ...")
     all_games = _load_all_games(results_dir, seeds=args.seeds)
     if not all_games:
         print("No games found.")
+        report_file.close()
         sys.exit(1)
 
-    _print_summary(all_games)
+    _print_summary(all_games, file=report_file)
 
-    plot_path = Path("results") / "images" / "turn_loss_plot.png"
-    _build_turn_plot(all_games, str(plot_path))
+    plot_path = Path("results") / "images" / "turn_loss_plot.pdf"
+    _build_turn_plot(all_games, str(plot_path), file=report_file)
+
+    report_file.close()
+    print(f"\nText report saved to {report_path}")
 
 
 if __name__ == "__main__":
