@@ -123,7 +123,7 @@
       ],
       "message": "i need either the magenta or gray. otherwise it is more advantageous for me to withdraw",
       "reasoning": null,
-      "thoughts": "e4 - i think the llm is trying to get the magenta as an excess chip, so i take it back and threaten to stop negotiating if it does not give it to me",
+      "thoughts": "e2 - i think the llm is trying to get the magenta as an excess chip, so i take it back and threaten to stop negotiating if it does not give it to me",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "obviously i will never accept that offer. stop wasting points by negotiating for longer. this offer lets us both reach our goal",
       "reasoning": null,
-      "thoughts": "e4 - i dont know why the llm thought i would accept that",
+      "thoughts": "e2 - i dont know why the llm thought i would accept that",
       "raw_response": null,
       "prompt": null
     },
