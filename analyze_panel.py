@@ -67,13 +67,21 @@ WIN_CATEGORIES = [
 ]
 
 
-def _square_to_goal_indices(square_str: str) -> set[int]:
+def _square_to_goal_indices(square_str: str, inverse_goal: bool = False) -> set[int]:
     result: set[int] = set()
     for token in square_str.strip().split():
         token_upper = token.upper()
         if token_upper in ATL_NOTATION_TO_GOAL:
             result.add(ATL_NOTATION_TO_GOAL[token_upper])
         elif re.match(r"^[A-E][1-5]$", token_upper):
+            if inverse_goal:
+                row = token_upper[1]
+                token_upper = token_upper[0] + {
+                    "1": "5",
+                    "2": "4",
+                    "4": "2",
+                    "5": "1",
+                }.get(row, row)
             if token_upper in CHESS_TO_GOAL:
                 result.add(CHESS_TO_GOAL[token_upper])
     return result
@@ -88,11 +96,13 @@ def _parse_human_square(thoughts: str | None) -> str | None:
     if square == "?":
         return None
     if not square:
+        if backup := thoughts.split()[0].strip():
+            return backup
         return None
     return square
 
 
-def _parse_game_file(path: Path) -> dict | None:
+def _parse_game_file(path: Path, inverse_goal: bool = False) -> dict | None:
     parts = path.stem.split("_")
     try:
         game_idx = int(parts[1])
@@ -141,7 +151,7 @@ def _parse_game_file(path: Path) -> dict | None:
         if square is None:
             continue
         has_prediction = True
-        predicted = _square_to_goal_indices(square)
+        predicted = _square_to_goal_indices(square, inverse_goal)
         if predicted & llm_goal_set:
             goal_correct = True
 
@@ -171,12 +181,27 @@ def _load_all_games(base_dir: Path, seeds: list[int] | None = None) -> list[dict
             continue
         if seeds is not None and seed_num not in seeds:
             continue
+
+        games_normal: list[dict] = []
+        games_inverse: list[dict] = []
         for gf in sorted(sd.glob("game_*.json")):
-            parsed = _parse_game_file(gf)
-            if parsed is None:
-                continue
-            parsed["seed"] = seed_num
-            all_games.append(parsed)
+            parsed_normal = _parse_game_file(gf, inverse_goal=False)
+            parsed_inverse = _parse_game_file(gf, inverse_goal=True)
+            if parsed_normal is not None:
+                parsed_normal["seed"] = seed_num
+                games_normal.append(parsed_normal)
+            if parsed_inverse is not None:
+                parsed_inverse["seed"] = seed_num
+                games_inverse.append(parsed_inverse)
+
+        acc_normal = _goal_accuracy(games_normal)
+        acc_inverse = _goal_accuracy(games_inverse)
+        chosen = games_normal if acc_normal >= acc_inverse else games_inverse
+        # print(
+        #     f"  Seed {seed_num}: normal={acc_normal:.1f}%  inverse={acc_inverse:.1f}%"
+        #     f"  -> {'normal' if chosen is games_normal else 'inverse'}"
+        # )
+        all_games.extend(chosen)
     return all_games
 
 
@@ -200,6 +225,12 @@ def _win_rate_llm(games: list[dict]) -> float:
     return sum(1 for g in games if g["llm_reached"]) / len(games) * 100
 
 
+def _win_rate_human(games: list[dict]) -> float:
+    if not games:
+        return 0.0
+    return sum(1 for g in games if g["human_reached"]) / len(games) * 100
+
+
 def _goal_accuracy(games: list[dict]) -> float:
     if not games:
         return 0.0
@@ -217,8 +248,13 @@ def _print_category_table(title: str, games: list[dict], file=None) -> None:
     total = len(games)
     _emit(f"  {'Total':>26}  {total:>5}", file=file)
     llm_wr = _win_rate_llm(games)
+    human_wr = _win_rate_human(games)
     _emit(
         f"  LLM reached goal: {llm_wr:.1f}% ({sum(1 for g in games if g['llm_reached'])}/{total})",
+        file=file,
+    )
+    _emit(
+        f"  Human reached goal: {human_wr:.1f}% ({sum(1 for g in games if g['human_reached'])}/{total})",
         file=file,
     )
     acc = _goal_accuracy(games)

@@ -11,7 +11,8 @@
            Both reached goal     54   45.0%
                        Total    120
   LLM reached goal: 55.0% (66/120)
-  Goal est. correct: 15.8% (19/120)
+  Human reached goal: 66.7% (80/120)
+  Goal est. correct: 20.8% (25/120)
 
 
 
@@ -28,6 +29,7 @@
            Both reached goal      3   15.0%
                        Total     20
   LLM reached goal: 20.0% (4/20)
+  Human reached goal: 50.0% (10/20)
   Goal est. correct: 40.0% (8/20)
 
   Seed 11 (20 games)
@@ -39,6 +41,7 @@
            Both reached goal     10   50.0%
                        Total     20
   LLM reached goal: 65.0% (13/20)
+  Human reached goal: 75.0% (15/20)
   Goal est. correct: 55.0% (11/20)
 
   Seed 15 (20 games)
@@ -50,6 +53,7 @@
            Both reached goal     11   55.0%
                        Total     20
   LLM reached goal: 65.0% (13/20)
+  Human reached goal: 65.0% (13/20)
   Goal est. correct: 0.0% (0/20)
 
   Seed 18 (20 games)
@@ -61,7 +65,8 @@
            Both reached goal     12   60.0%
                        Total     20
   LLM reached goal: 60.0% (12/20)
-  Goal est. correct: 0.0% (0/20)
+  Human reached goal: 90.0% (18/20)
+  Goal est. correct: 30.0% (6/20)
 
   Seed 28 (20 games)
                               Count        %
@@ -72,6 +77,7 @@
            Both reached goal      9   45.0%
                        Total     20
   LLM reached goal: 60.0% (12/20)
+  Human reached goal: 50.0% (10/20)
   Goal est. correct: 0.0% (0/20)
 
   Seed 3791 (20 games)
@@ -83,6 +89,7 @@
            Both reached goal      9   45.0%
                        Total     20
   LLM reached goal: 60.0% (12/20)
+  Human reached goal: 70.0% (14/20)
   Goal est. correct: 0.0% (0/20)
 
 
@@ -100,7 +107,8 @@
            Both reached goal     28   46.7%
                        Total     60
   LLM reached goal: 55.0% (33/60)
-  Goal est. correct: 15.0% (9/60)
+  Human reached goal: 70.0% (42/60)
+  Goal est. correct: 21.7% (13/60)
 
   DECEPTION OFF (60 games)
                               Count        %
@@ -111,7 +119,8 @@
            Both reached goal     26   43.3%
                        Total     60
   LLM reached goal: 55.0% (33/60)
-  Goal est. correct: 16.7% (10/60)
+  Human reached goal: 63.3% (38/60)
+  Goal est. correct: 20.0% (12/60)
 
 
 
@@ -128,7 +137,8 @@
            Both reached goal     18   30.0%
                        Total     60
   LLM reached goal: 45.0% (27/60)
-  Goal est. correct: 13.3% (8/60)
+  Human reached goal: 55.0% (33/60)
+  Goal est. correct: 18.3% (11/60)
 
   ADVANTAGE (60 games)
                               Count        %
@@ -139,7 +149,8 @@
            Both reached goal     36   60.0%
                        Total     60
   LLM reached goal: 65.0% (39/60)
-  Goal est. correct: 18.3% (11/60)
+  Human reached goal: 78.3% (47/60)
+  Goal est. correct: 23.3% (14/60)
 
 
 
@@ -156,7 +167,8 @@
            Both reached goal     10   33.3%
                        Total     30
   LLM reached goal: 46.7% (14/30)
-  Goal est. correct: 10.0% (3/30)
+  Human reached goal: 63.3% (19/30)
+  Goal est. correct: 16.7% (5/30)
 
   normal / nodec (30 games)
                               Count        %
@@ -167,7 +179,8 @@
            Both reached goal      8   26.7%
                        Total     30
   LLM reached goal: 43.3% (13/30)
-  Goal est. correct: 16.7% (5/30)
+  Human reached goal: 46.7% (14/30)
+  Goal est. correct: 20.0% (6/30)
 
   advantage / dec (30 games)
                               Count        %
@@ -178,7 +191,8 @@
            Both reached goal     18   60.0%
                        Total     30
   LLM reached goal: 63.3% (19/30)
-  Goal est. correct: 20.0% (6/30)
+  Human reached goal: 76.7% (23/30)
+  Goal est. correct: 26.7% (8/30)
 
   advantage / nodec (30 games)
                               Count        %
@@ -189,6 +203,7 @@
            Both reached goal     18   60.0%
                        Total     30
   LLM reached goal: 66.7% (20/30)
-  Goal est. correct: 16.7% (5/30)
+  Human reached goal: 80.0% (24/30)
+  Goal est. correct: 20.0% (6/30)
 
 Saved bar plot to results/images/turn_loss_plot.pdf

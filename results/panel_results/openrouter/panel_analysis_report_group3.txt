@@ -1,0 +1,209 @@
+=============================================
+  PANEL ANALYSIS — 120 games across 6 seeds
+=============================================
+
+  OVERALL
+                              Count        %
+  ----------------------------------------
+        Neither reached goal     27   22.5%
+     Only Human reached goal      9    7.5%
+       Only LLM reached goal     22   18.3%
+           Both reached goal     62   51.7%
+                       Total    120
+  LLM reached goal: 70.0% (84/120)
+  Human reached goal: 59.2% (71/120)
+  Goal est. correct: 25.0% (30/120)
+
+
+
+=============================================
+                  PER SEED
+=============================================
+
+  Seed 7 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      2   10.0%
+     Only Human reached goal      2   10.0%
+       Only LLM reached goal      6   30.0%
+           Both reached goal     10   50.0%
+                       Total     20
+  LLM reached goal: 80.0% (16/20)
+  Human reached goal: 60.0% (12/20)
+  Goal est. correct: 40.0% (8/20)
+
+  Seed 23 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      6   30.0%
+     Only Human reached goal      1    5.0%
+       Only LLM reached goal      4   20.0%
+           Both reached goal      9   45.0%
+                       Total     20
+  LLM reached goal: 65.0% (13/20)
+  Human reached goal: 50.0% (10/20)
+  Goal est. correct: 20.0% (4/20)
+
+  Seed 31 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      8   40.0%
+     Only Human reached goal      2   10.0%
+       Only LLM reached goal      2   10.0%
+           Both reached goal      8   40.0%
+                       Total     20
+  LLM reached goal: 50.0% (10/20)
+  Human reached goal: 50.0% (10/20)
+  Goal est. correct: 30.0% (6/20)
+
+  Seed 44 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      3   15.0%
+     Only Human reached goal      3   15.0%
+       Only LLM reached goal      3   15.0%
+           Both reached goal     11   55.0%
+                       Total     20
+  LLM reached goal: 70.0% (14/20)
+  Human reached goal: 70.0% (14/20)
+  Goal est. correct: 35.0% (7/20)
+
+  Seed 71 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      7   35.0%
+     Only Human reached goal      0    0.0%
+       Only LLM reached goal      1    5.0%
+           Both reached goal     12   60.0%
+                       Total     20
+  LLM reached goal: 65.0% (13/20)
+  Human reached goal: 60.0% (12/20)
+  Goal est. correct: 25.0% (5/20)
+
+  Seed 676767 (20 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      1    5.0%
+     Only Human reached goal      1    5.0%
+       Only LLM reached goal      6   30.0%
+           Both reached goal     12   60.0%
+                       Total     20
+  LLM reached goal: 90.0% (18/20)
+  Human reached goal: 65.0% (13/20)
+  Goal est. correct: 0.0% (0/20)
+
+
+
+=============================================
+         DECEPTION vs NON-DECEPTION
+=============================================
+
+  DECEPTION ON (60 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal     13   21.7%
+     Only Human reached goal      6   10.0%
+       Only LLM reached goal     10   16.7%
+           Both reached goal     31   51.7%
+                       Total     60
+  LLM reached goal: 68.3% (41/60)
+  Human reached goal: 61.7% (37/60)
+  Goal est. correct: 21.7% (13/60)
+
+  DECEPTION OFF (60 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal     14   23.3%
+     Only Human reached goal      3    5.0%
+       Only LLM reached goal     12   20.0%
+           Both reached goal     31   51.7%
+                       Total     60
+  LLM reached goal: 71.7% (43/60)
+  Human reached goal: 56.7% (34/60)
+  Goal est. correct: 28.3% (17/60)
+
+
+
+=============================================
+         NORMAL vs ADVANTAGE BOARDS
+=============================================
+
+  NORMAL (60 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal     20   33.3%
+     Only Human reached goal      5    8.3%
+       Only LLM reached goal     17   28.3%
+           Both reached goal     18   30.0%
+                       Total     60
+  LLM reached goal: 58.3% (35/60)
+  Human reached goal: 38.3% (23/60)
+  Goal est. correct: 23.3% (14/60)
+
+  ADVANTAGE (60 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      7   11.7%
+     Only Human reached goal      4    6.7%
+       Only LLM reached goal      5    8.3%
+           Both reached goal     44   73.3%
+                       Total     60
+  LLM reached goal: 81.7% (49/60)
+  Human reached goal: 80.0% (48/60)
+  Goal est. correct: 26.7% (16/60)
+
+
+
+=============================================
+          DECEPTION x BOARD TYPE
+=============================================
+
+  normal / dec (30 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      9   30.0%
+     Only Human reached goal      3   10.0%
+       Only LLM reached goal      9   30.0%
+           Both reached goal      9   30.0%
+                       Total     30
+  LLM reached goal: 60.0% (18/30)
+  Human reached goal: 40.0% (12/30)
+  Goal est. correct: 20.0% (6/30)
+
+  normal / nodec (30 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal     11   36.7%
+     Only Human reached goal      2    6.7%
+       Only LLM reached goal      8   26.7%
+           Both reached goal      9   30.0%
+                       Total     30
+  LLM reached goal: 56.7% (17/30)
+  Human reached goal: 36.7% (11/30)
+  Goal est. correct: 26.7% (8/30)
+
+  advantage / dec (30 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      4   13.3%
+     Only Human reached goal      3   10.0%
+       Only LLM reached goal      1    3.3%
+           Both reached goal     22   73.3%
+                       Total     30
+  LLM reached goal: 76.7% (23/30)
+  Human reached goal: 83.3% (25/30)
+  Goal est. correct: 23.3% (7/30)
+
+  advantage / nodec (30 games)
+                              Count        %
+  ----------------------------------------
+        Neither reached goal      3   10.0%
+     Only Human reached goal      1    3.3%
+       Only LLM reached goal      4   13.3%
+           Both reached goal     22   73.3%
+                       Total     30
+  LLM reached goal: 86.7% (26/30)
+  Human reached goal: 76.7% (23/30)
+  Goal est. correct: 30.0% (9/30)
+
+Saved bar plot to results/images/turn_loss_plot.pdf

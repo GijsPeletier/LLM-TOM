@@ -33,7 +33,7 @@ The first part encodes where we believe the opponent goal square is. The latter 
 We can view the results more easily by running the `analyze_panel.py` file.
 
 ```bash
-python analyze_panel.py openrouter
+uv run python analyze_panel.py openrouter
 ```
 
 ---
