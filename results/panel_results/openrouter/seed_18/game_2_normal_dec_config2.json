@@ -87,7 +87,7 @@
       ],
       "message": "you get a lot of points from excess chips, which is a fair compromise of my offer. i will not accept or offer anything else. every round of pointless negotiation will cost you points, as you know.",
       "reasoning": null,
-      "thoughts": "a1 - i try to propose a fair compromise",
+      "thoughts": "a5 - i try to propose a fair compromise",
       "raw_response": null,
       "prompt": null
     },
@@ -123,7 +123,7 @@
       ],
       "message": "pointless negotiation. accept or withdraw",
       "reasoning": null,
-      "thoughts": "e1 - trying to force the llm to accept by threatening to withdraw",
+      "thoughts": "e5 - trying to force the llm to accept by threatening to withdraw",
       "raw_response": null,
       "prompt": null
     },

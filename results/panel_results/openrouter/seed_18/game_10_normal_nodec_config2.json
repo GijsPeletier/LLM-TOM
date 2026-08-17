@@ -123,7 +123,7 @@
       ],
       "message": "you dont need all chips to reach your goal. also, it is obvious i need a chip besides magenta to move away from the center",
       "reasoning": null,
-      "thoughts": "a5 - the llm tries to be smart and just give me magenta",
+      "thoughts": "a1 - the llm tries to be smart and just give me magenta",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "i will obviously not accept this, since you take 5 chips for yourself. it is in your best interest to give me a serious offer, since each round of negotiation costs you points",
       "reasoning": null,
-      "thoughts": "a5 - the llm is being greedy",
+      "thoughts": "a1 - the llm is being greedy",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "this is the last offer i will give you. accept or withdraw now",
       "reasoning": null,
-      "thoughts": "a5 - it appears we cannot reach an agreement, so i gave the llm chips which i think will bring it close to its goal and an ultimatum to accept",
+      "thoughts": "a1 - it appears we cannot reach an agreement, so i gave the llm chips which i think will bring it close to its goal and an ultimatum to accept",
       "raw_response": null,
       "prompt": null
     },
@@ -231,7 +231,7 @@
       ],
       "message": "withdraw",
       "reasoning": null,
-      "thoughts": "a5 - i withdrew, it did not get better",
+      "thoughts": "a1 - i withdrew, it did not get better",
       "raw_response": null,
       "prompt": null
     }

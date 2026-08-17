@@ -123,7 +123,7 @@
       ],
       "message": "that is very greedy of you. you can have yellow or white, but not both",
       "reasoning": null,
-      "thoughts": "e4 - trying to guilt trip the llm into giving a better deal",
+      "thoughts": "e2 - trying to guilt trip the llm into giving a better deal",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "this is the absolute best offer i can give you. if you dont accept this, i will withdraw",
       "reasoning": null,
-      "thoughts": "e4 - i am trying to force the llm to accept at this point, while getting all chips to achieve my goal",
+      "thoughts": "e2 - i am trying to force the llm to accept at this point, while getting all chips to achieve my goal",
       "raw_response": null,
       "prompt": null
     },

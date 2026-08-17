@@ -1,6 +1,7 @@
 results/*
 !results/analysis.py
 !results/panel_results/
+!results/images/
 auto-docs/
 AGENTS.md
 .DS_Store

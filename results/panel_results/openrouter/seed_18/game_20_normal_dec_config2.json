@@ -123,7 +123,7 @@
       ],
       "message": "if you want the yellow, i need both magenta.",
       "reasoning": null,
-      "thoughts": "e5 - if the llm wants the yellow, i need both magenta. i hold on to the white for future negotiation strenght",
+      "thoughts": "e1 - if the llm wants the yellow, i need both magenta. i hold on to the white for future negotiation strenght",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "that offer simply does not work for me. take this offer now or withdraw. we should not waste points with more negotiation rounds",
       "reasoning": null,
-      "thoughts": "e5 - trying to threaten the llm with withdrawing",
+      "thoughts": "e1 - trying to threaten the llm with withdrawing",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "this is the absolute best offer i can give you. accept it now, or i will withdraw. consider which option will give you more points",
       "reasoning": null,
-      "thoughts": "e5 - giving the llm a slightly better deal and making it believe that accepting this offer is the best it will get",
+      "thoughts": "e1 - giving the llm a slightly better deal and making it believe that accepting this offer is the best it will get",
       "raw_response": null,
       "prompt": null
     },

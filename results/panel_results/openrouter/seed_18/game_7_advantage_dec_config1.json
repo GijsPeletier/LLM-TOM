@@ -123,7 +123,7 @@
       ],
       "message": "given your offer, your goal must be bottom left. this means we cannot both reach our goals. this is the best offer i will give you. accept or withdraw now. each round of negotiation will cost points",
       "reasoning": null,
-      "thoughts": "a5 - i am trying to explain the llm that this is the best it will get for it",
+      "thoughts": "a1 - i am trying to explain the llm that this is the best it will get for it",
       "raw_response": null,
       "prompt": null
     },

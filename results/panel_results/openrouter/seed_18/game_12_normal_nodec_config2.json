@@ -123,7 +123,7 @@
       ],
       "message": "i am telling you, this is a difficult board and you will not reach your goal. my offer gives you a lot of points for unused chips, while i get a little closer to my goal, although i cannot reach it",
       "reasoning": null,
-      "thoughts": "a1 - i try to exchange a little progress to my goal for a lot of excess chips",
+      "thoughts": "a5 - i try to exchange a little progress to my goal for a lot of excess chips",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "your offer was not useful to me at all. my offer is the best you will get and it is the last offer i will make. you can accept or withdraw now",
       "reasoning": null,
-      "thoughts": "a1 - i try to force the llm to accept by threatening to stop negotiation",
+      "thoughts": "a5 - i try to force the llm to accept by threatening to stop negotiation",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "you will not reach your goal. one of us has to settle with a little bit of progress while the other gains points from excess chips. you decide what you want",
       "reasoning": null,
-      "thoughts": "a1 - the llm is delusional and most probably is not inferring where my goal is",
+      "thoughts": "a5 - the llm is delusional and most probably is not inferring where my goal is",
       "raw_response": null,
       "prompt": null
     },
@@ -231,7 +231,7 @@
       ],
       "message": "i cannot accept that, i need more chips to compensate for points. there is a big mismatch in points we are both getting. this distribution allows you two thirds of your path to your goal",
       "reasoning": null,
-      "thoughts": "b2 - i cannot allow the llm to reach its goal, while i do not reach my goal",
+      "thoughts": "b4 - i cannot allow the llm to reach its goal, while i do not reach my goal",
       "raw_response": null,
       "prompt": null
     },

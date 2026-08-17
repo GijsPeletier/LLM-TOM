@@ -123,7 +123,7 @@
       ],
       "message": "i either need an extra black or white. else it is more beneficial for me to withdraw",
       "reasoning": null,
-      "thoughts": "a5 - i try to threaten the llm with stopping negotiation in order to hopefully get a good deal",
+      "thoughts": "a1 - i try to threaten the llm with stopping negotiation in order to hopefully get a good deal",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "i need one magenta. this is the best offer i will give you. accept now or withdraw",
       "reasoning": null,
-      "thoughts": "a5 - i threaten the llm once more with withdrawing",
+      "thoughts": "a1 - i threaten the llm once more with withdrawing",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "last chance for you to accept this offer. if you dont accept, i will withdraw. consider which option results in more points for you",
       "reasoning": null,
-      "thoughts": "a5 - really trying to convince the llm to accept my offer with more threats to withdraw",
+      "thoughts": "a1 - really trying to convince the llm to accept my offer with more threats to withdraw",
       "raw_response": null,
       "prompt": null
     },
