@@ -123,7 +123,7 @@
       ],
       "message": "okay basically you are saying you should lose. that is not fair. i need the black to finish, so hereby a new proposal. be cooperative.",
       "reasoning": null,
-      "thoughts": "a5 - this thing is just being stupid at the moment",
+      "thoughts": "a1 - this thing is just being stupid at the moment",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "okay this is the exact amount i need. lets play an honest game. you can keep the rest.",
       "reasoning": null,
-      "thoughts": "a5 - i am still lying but this llm is also not being honest and tries to get all of my chips",
+      "thoughts": "a1 - i am still lying but this llm is also not being honest and tries to get all of my chips",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "sure",
       "reasoning": null,
-      "thoughts": "a5 - he will get more points but he is being so stubborn that i am done, i can finish so i am fine",
+      "thoughts": "a1 - he will get more points but he is being so stubborn that i am done, i can finish so i am fine",
       "raw_response": null,
       "prompt": null
     }

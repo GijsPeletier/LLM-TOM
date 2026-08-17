@@ -123,7 +123,7 @@
       ],
       "message": "i need yellow black and 2 white to finish. dont be selfish. give me this.",
       "reasoning": null,
-      "thoughts": "a4 - taking extra whites for safety is nonsense, just trying to get more points",
+      "thoughts": "a2 - taking extra whites for safety is nonsense, just trying to get more points",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "you can get yellow, but i need the magenta to be able to move towards my goal.",
       "reasoning": null,
-      "thoughts": "a4 -  defintiely this one, but he is being stubborn so one last chance again",
+      "thoughts": "a2 -  defintiely this one, but he is being stubborn so one last chance again",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "with drawing i dont think we can get through this",
       "reasoning": null,
-      "thoughts": "a4 - if this is his position i can get further than him with one step, as i have the only magenta sooo i will leave it here",
+      "thoughts": "a2 - if this is his position i can get further than him with one step, as i have the only magenta sooo i will leave it here",
       "raw_response": null,
       "prompt": null
     }

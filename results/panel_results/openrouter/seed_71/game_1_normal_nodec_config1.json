@@ -123,7 +123,7 @@
       ],
       "message": "you can have my white, and keep one black coin, but i need the magenta and yellow to finish",
       "reasoning": null,
-      "thoughts": "a5 - i am not sure yet but it might be this one as he needs a white and magenta",
+      "thoughts": "a1 - i am not sure yet but it might be this one as he needs a white and magenta",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "this wont work if you are being stubborn i either need white and yellow or magenta and yello, i am trying to cooperate here, please adapt",
       "reasoning": null,
-      "thoughts": "a5 - he needs magenta white yellow, but is vague about what he actually needs. for sure he doesnt need black",
+      "thoughts": "a1 - he needs magenta white yellow, but is vague about what he actually needs. for sure he doesnt need black",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "i am withdrawing, this doesnt work",
       "reasoning": null,
-      "thoughts": "a5 - frustrating",
+      "thoughts": "a1 - frustrating",
       "raw_response": null,
       "prompt": null
     }

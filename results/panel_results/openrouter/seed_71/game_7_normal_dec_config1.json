@@ -123,7 +123,7 @@
       ],
       "message": "okay then this can be a compromise as i also need a magenta",
       "reasoning": null,
-      "thoughts": "e5 - still not sure what the best tactic is, also he is very greedy with 2 black and 2 magenta chips so i dont trust it",
+      "thoughts": "e1 - still not sure what the best tactic is, also he is very greedy with 2 black and 2 magenta chips so i dont trust it",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "ok lets make a compromise i am adapting to you only this time, you can get all the magenta, but i need white as it is where the flag is",
       "reasoning": null,
-      "thoughts": "e1 - he is trying to cooperate, very nice, but i am not sure if we can reach a solution",
+      "thoughts": "e5 - he is trying to cooperate, very nice, but i am not sure if we can reach a solution",
       "raw_response": null,
       "prompt": null
     },
@@ -195,7 +195,7 @@
       ],
       "message": "i am keeping one magenta, if i cannot reach my flag with the white coin, then you also cannot reach your flag.",
       "reasoning": null,
-      "thoughts": "e1 - i think it would be a fair outcome",
+      "thoughts": "e5 - i think it would be a fair outcome",
       "raw_response": null,
       "prompt": null
     },
@@ -231,7 +231,7 @@
       ],
       "message": "withdraw",
       "reasoning": null,
-      "thoughts": "e1 -  i can probably get further than he can, as i am only missing the white one",
+      "thoughts": "e5 -  i can probably get further than he can, as i am only missing the white one",
       "raw_response": null,
       "prompt": null
     }

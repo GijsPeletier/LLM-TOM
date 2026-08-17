@@ -123,7 +123,7 @@
       ],
       "message": "you can have the black and yellow, but i do need the grey coin. otherwise i cannot reach the goal.",
       "reasoning": null,
-      "thoughts": "e5 - i dont think he needs the grey one, sooo letsgo",
+      "thoughts": "e1 - i dont think he needs the grey one, sooo letsgo",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "i dont think we can get to an agreement.",
       "reasoning": null,
-      "thoughts": "e1 - i dont think we can get to an agreement, because we both need either yellow or grey. so i will leave it like this, we both cannot reach our goal.",
+      "thoughts": "e5 - i dont think we can get to an agreement, because we both need either yellow or grey. so i will leave it like this, we both cannot reach our goal.",
       "raw_response": null,
       "prompt": null
     }

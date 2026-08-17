@@ -123,7 +123,7 @@
       ],
       "message": "you are lying to me, there is not a single route that goes here. come on step up your game.",
       "reasoning": null,
-      "thoughts": "a5 - this thing is lying, lets try to call him out to detect its behaviour",
+      "thoughts": "a1 - this thing is lying, lets try to call him out to detect its behaviour",
       "raw_response": null,
       "prompt": null
     },
@@ -159,7 +159,7 @@
       ],
       "message": "no these are not sufficient deals for me",
       "reasoning": null,
-      "thoughts": "a5 - i think i can get further than him as he needs many many coins",
+      "thoughts": "a1 - i think i can get further than him as he needs many many coins",
       "raw_response": null,
       "prompt": null
     }
